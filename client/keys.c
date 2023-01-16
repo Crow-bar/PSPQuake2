@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -64,7 +64,7 @@ keyname_t keynames[] =
 	{"ALT", K_ALT},
 	{"CTRL", K_CTRL},
 	{"SHIFT", K_SHIFT},
-	
+
 	{"F1", K_F1},
 	{"F2", K_F2},
 	{"F3", K_F3},
@@ -94,21 +94,35 @@ keyname_t keynames[] =
 	{"JOY3", K_JOY3},
 	{"JOY4", K_JOY4},
 
-	{"AUX1", K_AUX1},
-	{"AUX2", K_AUX2},
-	{"AUX3", K_AUX3},
-	{"AUX4", K_AUX4},
-	{"AUX5", K_AUX5},
-	{"AUX6", K_AUX6},
-	{"AUX7", K_AUX7},
-	{"AUX8", K_AUX8},
-	{"AUX9", K_AUX9},
-	{"AUX10", K_AUX10},
-	{"AUX11", K_AUX11},
-	{"AUX12", K_AUX12},
-	{"AUX13", K_AUX13},
-	{"AUX14", K_AUX14},
-	{"AUX15", K_AUX15},
+#if __psp__
+	{"CROSS", K_A_BUTTON},
+	{"CIRCLE", K_B_BUTTON},
+	{"SQUARE", K_X_BUTTON},
+	{"TRIANGLE", K_Y_BUTTON},
+	{"LTRIGGER", K_L1_BUTTON},
+	{"RTRIGGER", K_R1_BUTTON},
+	{"BACK", K_BACK_BUTTON},
+	{"SELECT", K_MODE_BUTTON},
+	{"START", K_START_BUTTON},
+#else
+	{"A_BUTTON", K_A_BUTTON}, // they match xbox controller
+	{"B_BUTTON", K_B_BUTTON},
+	{"X_BUTTON", K_X_BUTTON},
+	{"Y_BUTTON", K_Y_BUTTON},
+	{"L1_BUTTON", K_L1_BUTTON},
+	{"R1_BUTTON", K_R1_BUTTON},
+	{"BACK", K_BACK_BUTTON},
+	{"MODE", K_MODE_BUTTON},
+	{"START", K_START_BUTTON},
+#endif
+	{"STICK1", K_LSTICK},
+	{"STICK2", K_RSTICK},
+	{"L2_BUTTON", K_L2_BUTTON},
+	{"R2_BUTTON", K_R2_BUTTON},
+	{"C_BUTTON", K_C_BUTTON},
+	{"Z_BUTTON", K_Z_BUTTON},
+
+
 	{"AUX16", K_AUX16},
 	{"AUX17", K_AUX17},
 	{"AUX18", K_AUX18},
@@ -193,6 +207,11 @@ Interactive line editing and console scrollback
 */
 void Key_Console (int key)
 {
+	if(!OSK_IsActive() && (key == K_ENTER || key == K_A_BUTTON))
+	{
+		if(OSK_SetActive(true))
+			return;
+	}
 
 	switch ( key )
 	{
@@ -244,7 +263,7 @@ void Key_Console (int key)
 		 ( ( ( key == K_INS ) || ( key == K_KP_INS ) ) && keydown[K_SHIFT] ) )
 	{
 		char *cbd;
-		
+
 		if ( ( cbd = Sys_GetClipboardData() ) != 0 )
 		{
 			int i;
@@ -267,7 +286,7 @@ void Key_Console (int key)
 		return;
 	}
 
-	if ( key == 'l' ) 
+	if ( key == 'l' )
 	{
 		if ( keydown[K_CTRL] )
 		{
@@ -276,7 +295,7 @@ void Key_Console (int key)
 		}
 	}
 
-	if ( key == K_ENTER || key == K_KP_ENTER )
+	if ( key == K_ENTER || key == K_KP_ENTER || key == K_A_BUTTON )
 	{	// backslash text are commands, else chat
 		if (key_lines[edit_line][1] == '\\' || key_lines[edit_line][1] == '/')
 			Cbuf_AddText (key_lines[edit_line]+2);	// skip the >
@@ -295,13 +314,13 @@ void Key_Console (int key)
 		return;
 	}
 
-	if (key == K_TAB)
+	if (key == K_TAB || key == K_Y_BUTTON)
 	{	// command completion
 		CompleteCommand ();
 		return;
 	}
-	
-	if ( ( key == K_BACKSPACE ) || ( key == K_LEFTARROW ) || ( key == K_KP_LEFTARROW ) || ( ( key == 'h' ) && ( keydown[K_CTRL] ) ) )
+
+	if ( ( key == K_BACKSPACE ) || ( key == K_X_BUTTON ) || ( key == K_LEFTARROW ) || ( key == K_KP_LEFTARROW ) || ( ( key == 'h' ) && ( keydown[K_CTRL] ) ) )
 	{
 		if (key_linepos > 1)
 			key_linepos--;
@@ -346,13 +365,13 @@ void Key_Console (int key)
 		return;
 	}
 
-	if (key == K_PGUP || key == K_KP_PGUP )
+	if (key == K_PGUP || key == K_KP_PGUP  || key == K_R1_BUTTON)
 	{
 		con.display -= 2;
 		return;
 	}
 
-	if (key == K_PGDN || key == K_KP_PGDN ) 
+	if (key == K_PGDN || key == K_KP_PGDN || key == K_L1_BUTTON)
 	{
 		con.display += 2;
 		if (con.display > con.current)
@@ -371,10 +390,10 @@ void Key_Console (int key)
 		con.display = con.current;
 		return;
 	}
-	
+
 	if (key < 32 || key > 127)
 		return;	// non printable
-		
+
 	if (key_linepos < MAXCMDLINE-1)
 	{
 		key_lines[edit_line][key_linepos] = key;
@@ -392,8 +411,13 @@ int			chat_bufferlen = 0;
 
 void Key_Message (int key)
 {
+	if(!OSK_IsActive() && (key == K_ENTER || key == K_A_BUTTON))
+	{
+		if(OSK_SetActive(true))
+			return;
+	}
 
-	if ( key == K_ENTER || key == K_KP_ENTER )
+	if ( key == K_ENTER || key == K_KP_ENTER || key == K_A_BUTTON )
 	{
 		if (chat_team)
 			Cbuf_AddText ("say_team \"");
@@ -402,14 +426,18 @@ void Key_Message (int key)
 		Cbuf_AddText(chat_buffer);
 		Cbuf_AddText("\"\n");
 
+		OSK_SetActive(false);
+
 		cls.key_dest = key_game;
 		chat_bufferlen = 0;
 		chat_buffer[0] = 0;
 		return;
 	}
 
-	if (key == K_ESCAPE)
+	if (key == K_ESCAPE || key == K_START_BUTTON || key == K_B_BUTTON)
 	{
+		OSK_SetActive(false);
+
 		cls.key_dest = key_game;
 		chat_bufferlen = 0;
 		chat_buffer[0] = 0;
@@ -419,7 +447,7 @@ void Key_Message (int key)
 	if (key < 32 || key > 127)
 		return;	// non printable
 
-	if (key == K_BACKSPACE)
+	if (key == K_BACKSPACE || key == K_X_BUTTON)
 	{
 		if (chat_bufferlen)
 		{
@@ -451,7 +479,7 @@ the K_* names are matched up.
 int Key_StringToKeynum (char *str)
 {
 	keyname_t	*kn;
-	
+
 	if (!str || !str[0])
 		return -1;
 	if (!str[1])
@@ -476,9 +504,9 @@ FIXME: handle quote special (general escape sequence?)
 */
 char *Key_KeynumToString (int keynum)
 {
-	keyname_t	*kn;	
+	keyname_t	*kn;
 	static	char	tinystr[2];
-	
+
 	if (keynum == -1)
 		return "<KEY NOT FOUND>";
 	if (keynum > 32 && keynum < 127)
@@ -487,7 +515,7 @@ char *Key_KeynumToString (int keynum)
 		tinystr[1] = 0;
 		return tinystr;
 	}
-	
+
 	for (kn=keynames ; kn->name ; kn++)
 		if (keynum == kn->keynum)
 			return kn->name;
@@ -505,7 +533,7 @@ void Key_SetBinding (int keynum, char *binding)
 {
 	char	*new;
 	int		l;
-			
+
 	if (keynum == -1)
 		return;
 
@@ -515,13 +543,13 @@ void Key_SetBinding (int keynum, char *binding)
 		Z_Free (keybindings[keynum]);
 		keybindings[keynum] = NULL;
 	}
-			
+
 // allocate memory for new binding
-	l = strlen (binding);	
+	l = strlen (binding);
 	new = Z_Malloc (l+1);
 	strcpy (new, binding);
 	new[l] = 0;
-	keybindings[keynum] = new;	
+	keybindings[keynum] = new;
 }
 
 /*
@@ -538,7 +566,7 @@ void Key_Unbind_f (void)
 		Com_Printf ("unbind <key> : remove commands from a key\n");
 		return;
 	}
-	
+
 	b = Key_StringToKeynum (Cmd_Argv(1));
 	if (b==-1)
 	{
@@ -552,7 +580,7 @@ void Key_Unbind_f (void)
 void Key_Unbindall_f (void)
 {
 	int		i;
-	
+
 	for (i=0 ; i<256 ; i++)
 		if (keybindings[i])
 			Key_SetBinding (i, "");
@@ -568,7 +596,7 @@ void Key_Bind_f (void)
 {
 	int			i, c, b;
 	char		cmd[1024];
-	
+
 	c = Cmd_Argc();
 
 	if (c < 2)
@@ -591,7 +619,7 @@ void Key_Bind_f (void)
 			Com_Printf ("\"%s\" is not bound\n", Cmd_Argv(1) );
 		return;
 	}
-	
+
 // copy the rest of the command line
 	cmd[0] = 0;		// start out with a null string
 	for (i=2 ; i< c ; i++)
@@ -652,7 +680,7 @@ void Key_Init (void)
 		key_lines[i][1] = 0;
 	}
 	key_linepos = 1;
-	
+
 //
 // init ascii characters in console mode
 //
@@ -687,6 +715,10 @@ void Key_Init (void)
 	consolekeys[K_KP_MINUS] = true;
 	consolekeys[K_KP_5] = true;
 
+	for(i=0 ; i<15 ; i++)
+		consolekeys[K_AUX1+i] = true;
+
+	consolekeys[K_MODE_BUTTON] = false;
 	consolekeys['`'] = false;
 	consolekeys['~'] = false;
 
@@ -750,20 +782,23 @@ void Key_Event (int key, qboolean down, unsigned time)
 		return;
 	}
 
+	if(OSK_KeyEvent(&key, down))
+		return;
+
 	// update auto-repeat status
 	if (down)
 	{
 		key_repeats[key]++;
-		if (key != K_BACKSPACE 
-			&& key != K_PAUSE 
-			&& key != K_PGUP 
-			&& key != K_KP_PGUP 
+		if (key != K_BACKSPACE
+			&& key != K_PAUSE
+			&& key != K_PGUP
+			&& key != K_KP_PGUP
 			&& key != K_PGDN
 			&& key != K_KP_PGDN
 			&& key_repeats[key] > 1)
 			return;	// ignore most autorepeats
-			
-		if (key >= 200 && !keybindings[key])
+
+		if (key >= 200 && key < K_AUX1 && key > K_AUX15 && !keybindings[key])
 			Com_Printf ("%s is unbound, hit F4 to set.\n", Key_KeynumToString (key) );
 	}
 	else
@@ -775,10 +810,12 @@ void Key_Event (int key, qboolean down, unsigned time)
 		shift_down = down;
 
 	// console key is hardcoded, so the user can never unbind it
-	if (key == '`' || key == '~')
+	if (key == '`' || key == '~' || key == K_MODE_BUTTON)
 	{
 		if (!down)
 			return;
+
+		OSK_SetActive(false);
 		Con_ToggleConsole_f ();
 		return;
 	}
@@ -788,10 +825,12 @@ void Key_Event (int key, qboolean down, unsigned time)
 		key = K_ESCAPE;
 
 	// menu key is hardcoded, so the user can never unbind it
-	if (key == K_ESCAPE)
+	if (key == K_ESCAPE || key == K_START_BUTTON)
 	{
 		if (!down)
 			return;
+
+		OSK_SetActive(false);
 
 		if (cl.frame.playerstate.stats[STAT_LAYOUTS] && cls.key_dest == key_game)
 		{	// put away help computer / inventory

@@ -153,7 +153,11 @@ model_t *Mod_ForName (char *name, qboolean crash)
 	switch (LittleLong(*(unsigned *)buf))
 	{
 	case IDALIASHEADER:
+#ifdef __psp__
+		loadmodel->extradata = Hunk_Begin (0x100000);
+#else
 		loadmodel->extradata = Hunk_Begin (0x200000);
+#endif
 		Mod_LoadAliasModel (mod, buf);
 		break;
 		
@@ -163,7 +167,11 @@ model_t *Mod_ForName (char *name, qboolean crash)
 		break;
 	
 	case IDBSPHEADER:
+#ifdef __psp__
+		loadmodel->extradata = Hunk_Begin (0x900000);
+#else
 		loadmodel->extradata = Hunk_Begin (0x1000000);
+#endif
 		Mod_LoadBrushModel (mod, buf);
 		break;
 

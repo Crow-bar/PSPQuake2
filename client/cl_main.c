@@ -63,6 +63,7 @@ cvar_t	*cl_timedemo;
 cvar_t	*lookspring;
 cvar_t	*lookstrafe;
 cvar_t	*sensitivity;
+cvar_t	*osk;
 
 cvar_t	*m_pitch;
 cvar_t	*m_yaw;
@@ -1450,6 +1451,11 @@ void CL_InitLocal (void)
 	lookspring = Cvar_Get ("lookspring", "0", CVAR_ARCHIVE);
 	lookstrafe = Cvar_Get ("lookstrafe", "0", CVAR_ARCHIVE);
 	sensitivity = Cvar_Get ("sensitivity", "3", CVAR_ARCHIVE);
+#if __psp__
+	osk = Cvar_Get ("osk", "1", 0);
+#else
+	osk = Cvar_Get ("osk", "0", CVAR_ARCHIVE);
+#endif
 
 	m_pitch = Cvar_Get ("m_pitch", "0.022", CVAR_ARCHIVE);
 	m_yaw = Cvar_Get ("m_yaw", "0.022", 0);

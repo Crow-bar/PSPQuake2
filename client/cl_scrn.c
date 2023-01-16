@@ -1334,6 +1334,7 @@ void SCR_UpdateScreen (void)
 					cl.cinematicpalette_active = false;
 				}
 				M_Draw ();
+				OSK_Draw ();
 //				re.EndFrame();
 //				return;
 			}
@@ -1345,6 +1346,7 @@ void SCR_UpdateScreen (void)
 					cl.cinematicpalette_active = false;
 				}
 				SCR_DrawConsole ();
+				OSK_Draw ();
 //				re.EndFrame();
 //				return;
 			}
@@ -1393,6 +1395,8 @@ void SCR_UpdateScreen (void)
 			SCR_DrawConsole ();
 
 			M_Draw ();
+
+			OSK_Draw ();
 
 			SCR_DrawLoading ();
 		}

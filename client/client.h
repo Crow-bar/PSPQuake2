@@ -276,6 +276,7 @@ extern	cvar_t	*cl_showclamp;
 extern	cvar_t	*lookspring;
 extern	cvar_t	*lookstrafe;
 extern	cvar_t	*sensitivity;
+extern	cvar_t	*osk;
 
 extern	cvar_t	*m_pitch;
 extern	cvar_t	*m_yaw;
@@ -563,6 +564,14 @@ void M_Draw (void);
 void M_Menu_Main_f (void);
 void M_ForceMenuOff (void);
 void M_AddToServerList (netadr_t adr, char *info);
+
+//
+// osk.c
+//
+qboolean OSK_SetActive(qboolean active);
+qboolean OSK_IsActive(void);
+qboolean OSK_KeyEvent(int *key, qboolean down);
+void OSK_Draw(void);
 
 //
 // cl_inv.c

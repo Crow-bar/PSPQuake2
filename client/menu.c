@@ -159,6 +159,8 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 	switch ( key )
 	{
 	case K_ESCAPE:
+	case K_START_BUTTON:
+	case K_B_BUTTON:
 		M_PopMenu();
 		return menu_out_sound;
 	case K_KP_UPARROW:
@@ -211,21 +213,6 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 	case K_JOY2:
 	case K_JOY3:
 	case K_JOY4:
-	case K_AUX1:
-	case K_AUX2:
-	case K_AUX3:
-	case K_AUX4:
-	case K_AUX5:
-	case K_AUX6:
-	case K_AUX7:
-	case K_AUX8:
-	case K_AUX9:
-	case K_AUX10:
-	case K_AUX11:
-	case K_AUX12:
-	case K_AUX13:
-	case K_AUX14:
-	case K_AUX15:
 	case K_AUX16:
 	case K_AUX17:
 	case K_AUX18:
@@ -246,6 +233,7 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 		
 	case K_KP_ENTER:
 	case K_ENTER:
+	case K_A_BUTTON:
 		if ( m )
 			Menu_SelectItem( m );
 		sound = menu_move_sound;
@@ -438,6 +426,8 @@ const char *M_Main_Key (int key)
 	switch (key)
 	{
 	case K_ESCAPE:
+	case K_START_BUTTON:
+	case K_B_BUTTON:
 		M_PopMenu ();
 		break;
 
@@ -455,6 +445,7 @@ const char *M_Main_Key (int key)
 
 	case K_KP_ENTER:
 	case K_ENTER:
+	case K_A_BUTTON:
 		m_entersound = true;
 
 		switch (m_main_cursor)
@@ -952,8 +943,12 @@ static void Keys_MenuInit( void )
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_inv_next_action );
 
 	Menu_AddItem( &s_keys_menu, ( void * ) &s_keys_help_computer_action );
-	
+
+#if __psp__
+	Menu_SetStatusBar( &s_keys_menu, "CROSS to change, SQUARE to clear" );
+#else
 	Menu_SetStatusBar( &s_keys_menu, "enter to change, backspace to clear" );
+#endif
 	Menu_Center( &s_keys_menu );
 }
 
@@ -969,15 +964,19 @@ static const char *Keys_MenuKey( int key )
 
 	if ( bind_grab )
 	{	
-		if ( key != K_ESCAPE && key != '`' )
+		if ( key != K_ESCAPE && key != K_START_BUTTON && key != K_MODE_BUTTON && key != '`' )
 		{
 			char cmd[1024];
 
 			Com_sprintf (cmd, sizeof(cmd), "bind \"%s\" \"%s\"\n", Key_KeynumToString(key), bindnames[item->generic.localdata[0]][0]);
 			Cbuf_InsertText (cmd);
 		}
-		
+
+#if __psp__
+		Menu_SetStatusBar( &s_keys_menu, "CROSS to change, SQUARE to clear" );
+#else
 		Menu_SetStatusBar( &s_keys_menu, "enter to change, backspace to clear" );
+#endif
 		bind_grab = false;
 		return menu_out_sound;
 	}
@@ -986,11 +985,13 @@ static const char *Keys_MenuKey( int key )
 	{
 	case K_KP_ENTER:
 	case K_ENTER:
+	case K_A_BUTTON:
 		KeyBindingFunc( item );
 		return menu_in_sound;
 	case K_BACKSPACE:		// delete bindings
 	case K_DEL:				// delete bindings
 	case K_KP_DEL:
+	case K_X_BUTTON:
 		M_UnbindCommand( bindnames[item->generic.localdata[0]][0] );
 		return menu_out_sound;
 	default:
@@ -1806,6 +1807,8 @@ const char *M_Credits_Key( int key )
 	switch (key)
 	{
 	case K_ESCAPE:
+	case K_START_BUTTON:
+	case K_B_BUTTON:
 		if (creditsBuffer)
 			FS_FreeFile (creditsBuffer);
 		M_PopMenu ();
@@ -2113,7 +2116,7 @@ void LoadGame_MenuDraw( void )
 
 const char *LoadGame_MenuKey( int key )
 {
-	if ( key == K_ESCAPE || key == K_ENTER )
+	if ( key == K_ENTER || key == K_A_BUTTON || key == K_ESCAPE  || key == K_START_BUTTON || key == K_B_BUTTON )
 	{
 		s_savegame_menu.cursor = s_loadgame_menu.cursor - 1;
 		if ( s_savegame_menu.cursor < 0 )
@@ -2183,7 +2186,7 @@ void SaveGame_MenuInit( void )
 
 const char *SaveGame_MenuKey( int key )
 {
-	if ( key == K_ENTER || key == K_ESCAPE )
+	if ( key == K_ENTER || key == K_A_BUTTON || key == K_ESCAPE  || key == K_START_BUTTON || key == K_B_BUTTON )
 	{
 		s_loadgame_menu.cursor = s_savegame_menu.cursor - 1;
 		if ( s_loadgame_menu.cursor < 0 )
@@ -2716,7 +2719,7 @@ void StartServer_MenuDraw(void)
 
 const char *StartServer_MenuKey( int key )
 {
-	if ( key == K_ESCAPE )
+	if ( key == K_ESCAPE || key == K_START_BUTTON || key == K_B_BUTTON )
 	{
 		if ( mapnames )
 		{
@@ -3320,7 +3323,7 @@ void AddressBook_MenuInit( void )
 
 const char *AddressBook_MenuKey( int key )
 {
-	if ( key == K_ESCAPE )
+	if ( key == K_ESCAPE || key == K_START_BUTTON || key == K_B_BUTTON )
 	{
 		int index;
 		char buffer[20];
@@ -3828,7 +3831,7 @@ const char *PlayerConfig_MenuKey (int key)
 {
 	int i;
 
-	if ( key == K_ESCAPE )
+	if ( key == K_ESCAPE || key == K_START_BUTTON || key == K_B_BUTTON )
 	{
 		char scratch[1024];
 
@@ -3901,11 +3904,14 @@ const char *M_Quit_Key (int key)
 	switch (key)
 	{
 	case K_ESCAPE:
+	case K_START_BUTTON:
+	case K_B_BUTTON:
 	case 'n':
 	case 'N':
 		M_PopMenu ();
 		break;
 
+	case K_A_BUTTON:
 	case 'Y':
 	case 'y':
 		cls.key_dest = key_console;

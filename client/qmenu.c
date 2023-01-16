@@ -135,6 +135,12 @@ qboolean Field_Key( menufield_s *f, int key )
 {
 	extern int keydown[];
 
+	if(!OSK_IsActive() && (key == K_ENTER || key == K_A_BUTTON))
+	{
+		if(OSK_SetActive(true))
+			return false;
+	}
+
 	switch ( key )
 	{
 	case K_KP_SLASH:
@@ -181,15 +187,8 @@ qboolean Field_Key( menufield_s *f, int key )
 		break;
 	}
 
-	if ( key > 127 )
-	{
-		switch ( key )
-		{
-		case K_DEL:
-		default:
-			return false;
-		}
-	}
+	if ( key > 127 && key != K_X_BUTTON )
+		return false;
 
 	/*
 	** support pasting from the clipboard
@@ -219,6 +218,7 @@ qboolean Field_Key( menufield_s *f, int key )
 	case K_KP_LEFTARROW:
 	case K_LEFTARROW:
 	case K_BACKSPACE:
+	case K_X_BUTTON:
 		if ( f->cursor > 0 )
 		{
 			memmove( &f->buffer[f->cursor-1], &f->buffer[f->cursor], strlen( &f->buffer[f->cursor] ) + 1 );
@@ -240,6 +240,10 @@ qboolean Field_Key( menufield_s *f, int key )
 	case K_ENTER:
 	case K_ESCAPE:
 	case K_TAB:
+	case K_START_BUTTON:
+	case K_B_BUTTON:
+	case K_A_BUTTON:
+		OSK_SetActive(false);
 		return false;
 
 	case K_SPACE:
