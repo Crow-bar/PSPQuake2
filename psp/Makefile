@@ -135,12 +135,13 @@ QUAKE2_OBJS = \
 	$(PSP_DIR)/sys_psp.o \
 	$(PSP_DIR)/in_psp.o \
 	$(PSP_DIR)/swimp_psp.o \
+	$(PSP_DIR)/vid_psp.o \
+	$(PSP_DIR)/vid_menu.o \
 	$(PSP_DIR)/snd_psp.o \
 	$(PSP_DIR)/q_shpsp.o \
 	$(PSP_DIR)/glob.o \
 	\
 	$(NULL_DIR)/cd_null.o \
-	$(NULL_DIR)/vid_null.o \
 	$(NULL_DIR)/net_null.o \
 	\
 	$(GAME_DIR)/q_shared.o \
