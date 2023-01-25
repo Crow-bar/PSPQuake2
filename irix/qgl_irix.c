@@ -2931,12 +2931,12 @@ void QGL_Shutdown( void )
 /*
 ** QGL_Init
 **
-** This is responsible for binding our qgl function pointers to 
-** the appropriate GL stuff.  In Windows this means doing a 
+** This is responsible for binding our qgl function pointers to
+** the appropriate GL stuff.  In Windows this means doing a
 ** LoadLibrary and a bunch of calls to GetProcAddress.  On other
 ** operating systems we need to do the right thing, whatever that
 ** might be.
-** 
+**
 */
 qboolean QGL_Init( const char *dllname )
 {
@@ -3304,7 +3304,7 @@ void GLimp_EnableLogging( qboolean enable )
 
 			asctime( newtime );
 
-			sprintf( buffer, "%s/gl.log", ri.FS_Gamedir() ); 
+			sprintf( buffer, "%s/gl.log", ri.FS_WriteDir (FS_PATH_GAMEDIR) );
 			log_fp = fopen( buffer, "wt");
 
 			fprintf( log_fp, "%s\n", asctime( newtime ) );

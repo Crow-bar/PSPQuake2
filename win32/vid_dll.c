@@ -583,7 +583,9 @@ qboolean VID_LoadRefresh( char *name )
 	ri.Sys_Error = VID_Error;
 	ri.FS_LoadFile = FS_LoadFile;
 	ri.FS_FreeFile = FS_FreeFile;
-	ri.FS_Gamedir = FS_Gamedir;
+	ri.FS_WriteFile = FS_WriteFile;
+	ri.FS_WriteDir = FS_WriteDir;
+	ri.FS_FileExists = FS_FileExists;
 	ri.Cvar_Get = Cvar_Get;
 	ri.Cvar_Set = Cvar_Set;
 	ri.Cvar_SetValue = Cvar_SetValue;

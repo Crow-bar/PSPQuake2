@@ -1039,7 +1039,7 @@ void SV_Shutdown (char *finalmsg, qboolean reconnect)
 
 	// free current level
 	if (sv.demofile)
-		fclose (sv.demofile);
+		FS_FClose (sv.demofile);
 	memset (&sv, 0, sizeof(sv));
 	Com_SetServerState (sv.state);
 
@@ -1049,7 +1049,7 @@ void SV_Shutdown (char *finalmsg, qboolean reconnect)
 	if (svs.client_entities)
 		Z_Free (svs.client_entities);
 	if (svs.demofile)
-		fclose (svs.demofile);
+		FS_FClose (svs.demofile);
 	memset (&svs, 0, sizeof(svs));
 }
 

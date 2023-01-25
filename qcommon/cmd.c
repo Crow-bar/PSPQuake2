@@ -379,7 +379,7 @@ void Cmd_Exec_f (void)
 		return;
 	}
 
-	len = FS_LoadFile (Cmd_Argv(1), (void **)&f);
+	f = FS_LoadFile (Cmd_Argv(1), &len, FS_PATH_ALL);
 	if (!f)
 	{
 		Com_Printf ("couldn't exec %s\n",Cmd_Argv(1));

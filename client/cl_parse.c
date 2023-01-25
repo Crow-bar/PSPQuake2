@@ -50,12 +50,13 @@ char *svc_strings[256] =
 
 //=============================================================================
 
-void CL_DownloadFileName(char *dest, int destlen, char *fn)
+int CL_DownloadFileName(char *dest, int destlen, char *fn)
 {
+	Com_sprintf (dest, destlen, "%s/%s", BASEDIRNAME, fn);
+
 	if (strncmp(fn, "players", 7) == 0)
-		Com_sprintf (dest, destlen, "%s/%s", BASEDIRNAME, fn);
-	else
-		Com_sprintf (dest, destlen, "%s/%s", FS_Gamedir(), fn);
+		return FS_PATH_BASEDIR;
+	return FS_PATH_GAMEDIR;
 }
 
 /*
@@ -68,8 +69,10 @@ to start a download from the server.
 */
 qboolean	CL_CheckOrDownloadFile (char *filename)
 {
-	FILE *fp;
+	file_t *fp;
 	char	name[MAX_OSPATH];
+	int		len;
+	int		pathflag;
 
 	if (strstr (filename, ".."))
 	{
@@ -77,7 +80,7 @@ qboolean	CL_CheckOrDownloadFile (char *filename)
 		return true;
 	}
 
-	if (FS_LoadFile (filename, NULL) != -1)
+	if (FS_FileExists (filename, 0))
 	{	// it exists, no need to download
 		return true;
 	}
@@ -93,15 +96,13 @@ qboolean	CL_CheckOrDownloadFile (char *filename)
 //ZOID
 	// check to see if we already have a tmp for this file, if so, try to resume
 	// open the file if not opened yet
-	CL_DownloadFileName(name, sizeof(name), cls.downloadtempname);
+	pathflag = CL_DownloadFileName(name, sizeof(name), cls.downloadtempname);
 
 //	FS_CreatePath (name);
 
-	fp = fopen (name, "r+b");
+	fp = FS_FOpen (name, FS_MODE_APPEND | pathflag);
 	if (fp) { // it exists
-		int len;
-		fseek(fp, 0, SEEK_END);
-		len = ftell(fp);
+		len = FS_FLength(fp);
 
 		cls.download = fp;
 
@@ -146,7 +147,7 @@ void	CL_Download_f (void)
 		return;
 	}
 
-	if (FS_LoadFile (filename, NULL) != -1)
+	if (FS_FileExists (filename, 0))
 	{	// it exists, no need to download
 		Com_Printf("File already exists.\n");
 		return;
@@ -202,6 +203,7 @@ void CL_ParseDownload (void)
 	int		size, percent;
 	char	name[MAX_OSPATH];
 	int		r;
+	int		pathflag;
 
 	// read the data
 	size = MSG_ReadShort (&net_message);
@@ -212,7 +214,7 @@ void CL_ParseDownload (void)
 		if (cls.download)
 		{
 			// if here, we tried to resume a file but the server said no
-			fclose (cls.download);
+			FS_FClose (cls.download);
 			cls.download = NULL;
 		}
 		CL_RequestNextDownload ();
@@ -222,11 +224,9 @@ void CL_ParseDownload (void)
 	// open the file if not opened yet
 	if (!cls.download)
 	{
-		CL_DownloadFileName(name, sizeof(name), cls.downloadtempname);
+		pathflag = CL_DownloadFileName(name, sizeof(name), cls.downloadtempname);
 
-		FS_CreatePath (name);
-
-		cls.download = fopen (name, "wb");
+		cls.download = FS_FOpen (name, FS_MODE_WRITE | pathflag);
 		if (!cls.download)
 		{
 			net_message.readcount += size;
@@ -236,7 +236,7 @@ void CL_ParseDownload (void)
 		}
 	}
 
-	fwrite (net_message.data + net_message.readcount, 1, size, cls.download);
+	FS_FWrite (cls.download, net_message.data + net_message.readcount, size);
 	net_message.readcount += size;
 
 	if (percent != 100)
@@ -263,12 +263,12 @@ void CL_ParseDownload (void)
 
 //		Com_Printf ("100%%\n");
 
-		fclose (cls.download);
+		FS_FClose (cls.download);
 
 		// rename the temp file to it's final name
 		CL_DownloadFileName(oldn, sizeof(oldn), cls.downloadtempname);
-		CL_DownloadFileName(newn, sizeof(newn), cls.downloadname);
-		r = rename (oldn, newn);
+		pathflag = CL_DownloadFileName(newn, sizeof(newn), cls.downloadname);
+		r = FS_FileRename (oldn, newn, pathflag);
 		if (r)
 			Com_Printf ("failed to rename.\n");
 
@@ -710,7 +710,7 @@ void CL_ParseServerMessage (void)
 			Com_Printf ("Server disconnected, reconnecting\n");
 			if (cls.download) {
 				//ZOID, close download
-				fclose (cls.download);
+				FS_FClose (cls.download);
 				cls.download = NULL;
 			}
 			cls.state = ca_connecting;

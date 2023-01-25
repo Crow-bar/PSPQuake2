@@ -721,7 +721,7 @@ void SV_RecordDemoMessage (void)
 
 	// now write the entire message to the file, prefixed by the length
 	len = LittleLong (buf.cursize);
-	fwrite (&len, 4, 1, svs.demofile);
-	fwrite (buf.data, buf.cursize, 1, svs.demofile);
+	FS_FWrite (svs.demofile, &len, 4);
+	FS_FWrite (svs.demofile, buf.data, buf.cursize);
 }
 

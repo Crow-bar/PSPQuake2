@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -203,12 +203,15 @@ typedef struct
 	// or a discrete file from anywhere in the quake search path
 	// a -1 return means the file does not exist
 	// NULL can be passed for buf to just determine existance
-	int		(*FS_LoadFile) (char *name, void **buf);
-	void	(*FS_FreeFile) (void *buf);
+	byte		*(*FS_LoadFile) (const char *name, size_t *size, int flags);
+	void		 (*FS_FreeFile) (void *buf);
+	qboolean	 (*FS_WriteFile) (const char *name, const void *buf, size_t len, int flags);
 
 	// gamedir will be the current directory that generated
 	// files should be stored to, ie: "f:\quake\id1"
-	char	*(*FS_Gamedir) (void);
+	const char	*(*FS_WriteDir) (int flags);
+
+	qboolean	 (*FS_FileExists) (const char *filename, int flags);
 
 	cvar_t	*(*Cvar_Get) (char *name, char *value, int flags);
 	cvar_t	*(*Cvar_Set)( char *name, char *value );

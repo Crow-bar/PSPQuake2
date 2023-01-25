@@ -104,8 +104,10 @@ void	VID_Init (void)
     ri.Sys_Error = VID_Error;
     ri.FS_LoadFile = FS_LoadFile;
     ri.FS_FreeFile = FS_FreeFile;
-    ri.FS_Gamedir = FS_Gamedir;
-	ri.Vid_NewWindow = VID_NewWindow;
+    ri.FS_WriteFile = FS_WriteFile;
+    ri.FS_WriteDir = FS_WriteDir;
+    ri.FS_FileExists = FS_FileExists;
+    ri.Vid_NewWindow = VID_NewWindow;
     ri.Cvar_Get = Cvar_Get;
     ri.Cvar_Set = Cvar_Set;
     ri.Cvar_SetValue = Cvar_SetValue;

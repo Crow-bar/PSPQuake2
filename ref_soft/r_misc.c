@@ -550,7 +550,6 @@ void WritePCXfile (char *filename, byte *data, int width, int height,
 	int			i, j, length;
 	pcx_t		*pcx;
 	byte		*pack;
-	FILE		*f;
 
 	pcx = (pcx_t *)malloc (width*height*2+1000);
 	if (!pcx)
@@ -590,26 +589,18 @@ void WritePCXfile (char *filename, byte *data, int width, int height,
 
 		data += rowbytes - width;
 	}
-			
+
 // write the palette
 	*pack++ = 0x0c;	// palette ID byte
 	for (i=0 ; i<768 ; i++)
 		*pack++ = *palette++;
-		
+
 // write output file 
 	length = pack - (byte *)pcx;
-	f = fopen (filename, "wb");
-	if (!f)
-		ri.Con_Printf (PRINT_ALL, "Failed to open to %s\n", filename);
-	else
-	{
-		fwrite ((void *)pcx, 1, length, f);
-		fclose (f);
-	}
-
+	ri.FS_WriteFile(filename, (void *)pcx, length, FS_PATH_GAMEDIR);
 	free (pcx);
-} 
- 
+}
+
 
 
 /* 
@@ -622,27 +613,20 @@ void R_ScreenShot_f (void)
 	int			i; 
 	char		pcxname[80]; 
 	char		checkname[MAX_OSPATH];
-	FILE		*f;
 	byte		palette[768];
-
-	// create the scrnshots directory if it doesn't exist
-	Com_sprintf (checkname, sizeof(checkname), "%s/scrnshot", ri.FS_Gamedir());
-	Sys_Mkdir (checkname);
 
 // 
 // find a file name to save it to 
 // 
 	strcpy(pcxname,"quake00.pcx");
-		
+
 	for (i=0 ; i<=99 ; i++) 
 	{ 
 		pcxname[5] = i/10 + '0'; 
 		pcxname[6] = i%10 + '0'; 
-		Com_sprintf (checkname, sizeof(checkname), "%s/scrnshot/%s", ri.FS_Gamedir(), pcxname);
-		f = fopen (checkname, "r");
-		if (!f)
+		Com_sprintf (checkname, sizeof(checkname), "scrnshot/%s", pcxname);
+		if (!ri.FS_FileExists(checkname, FS_PATH_GAMEDIR | FS_TYPE_RFS))
 			break;	// file doesn't exist
-		fclose (f);
 	} 
 	if (i==100) 
 	{

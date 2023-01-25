@@ -433,7 +433,7 @@ void LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *heigh
 	//
 	// load the file
 	//
-	len = ri.FS_LoadFile (filename, (void **)&raw);
+	raw = ri.FS_LoadFile (filename, &len, FS_PATH_ALL);
 	if (!raw)
 	{
 		ri.Con_Printf (PRINT_DEVELOPER, "Bad pcx file %s\n", filename);
@@ -553,7 +553,7 @@ void LoadTGA (char *name, byte **pic, int *width, int *height)
 	//
 	// load the file
 	//
-	length = ri.FS_LoadFile (name, (void **)&buffer);
+	buffer = ri.FS_LoadFile (name, &length, FS_PATH_ALL);
 	if (!buffer)
 	{
 		ri.Con_Printf (PRINT_DEVELOPER, "Bad tga file %s\n", name);
@@ -1321,7 +1321,7 @@ image_t *GL_LoadWal (char *name)
 	int			width, height, ofs;
 	image_t		*image;
 
-	ri.FS_LoadFile (name, (void **)&mt);
+	mt = (miptex_t *)ri.FS_LoadFile (name, NULL, FS_PATH_ALL);
 	if (!mt)
 	{
 		ri.Con_Printf (PRINT_ALL, "GL_FindImage: can't load %s\n", name);
@@ -1511,7 +1511,7 @@ void	GL_InitImages (void)
 
 	if ( qglColorTableEXT )
 	{
-		ri.FS_LoadFile( "pics/16to8.dat", &gl_state.d_16to8table );
+		gl_state.d_16to8table = ri.FS_LoadFile("pics/16to8.dat", NULL, FS_PATH_ALL);
 		if ( !gl_state.d_16to8table )
 			ri.Sys_Error( ERR_FATAL, "Couldn't load pics/16to8.pcx");
 	}

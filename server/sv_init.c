@@ -117,7 +117,6 @@ SV_CheckForSavegame
 void SV_CheckForSavegame (void)
 {
 	char		name[MAX_OSPATH];
-	FILE		*f;
 	int			i;
 
 	if (sv_noreload->value)
@@ -126,12 +125,9 @@ void SV_CheckForSavegame (void)
 	if (Cvar_VariableValue ("deathmatch"))
 		return;
 
-	Com_sprintf (name, sizeof(name), "%s/save/current/%s.sav", FS_Gamedir(), sv.name);
-	f = fopen (name, "rb");
-	if (!f)
-		return;		// no savegame
-
-	fclose (f);
+	Com_sprintf (name, sizeof(name), "save/current/%s.sav", sv.name);
+	if (!FS_FileExists(name, FS_PATH_GAMEDIR))
+		return;
 
 	SV_ClearWorld ();
 
@@ -178,7 +174,7 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 
 	Com_DPrintf ("SpawnServer: %s\n",server);
 	if (sv.demofile)
-		fclose (sv.demofile);
+		FS_FClose (sv.demofile);
 
 	svs.spawncount++;		// any partially connected client will be
 							// restarted

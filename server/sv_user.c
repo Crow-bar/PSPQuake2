@@ -42,7 +42,7 @@ void SV_BeginDemoserver (void)
 	char		name[MAX_OSPATH];
 
 	Com_sprintf (name, sizeof(name), "demos/%s", sv.name);
-	FS_FOpenFile (name, &sv.demofile);
+	sv.demofile = FS_FOpen (name, FS_MODE_READ);
 	if (!sv.demofile)
 		Com_Error (ERR_DROP, "Couldn't open %s\n", name);
 }
@@ -290,7 +290,7 @@ void SV_NextDownload_f (void)
 	if (sv_client->downloadcount != sv_client->downloadsize)
 		return;
 
-	FS_FreeFile (sv_client->download);
+	Z_Free (sv_client->download);
 	sv_client->download = NULL;
 }
 
@@ -302,13 +302,15 @@ SV_BeginDownload_f
 void SV_BeginDownload_f(void)
 {
 	char	*name;
+	file_t	*file;
 	extern	cvar_t *allow_download;
 	extern	cvar_t *allow_download_players;
 	extern	cvar_t *allow_download_models;
 	extern	cvar_t *allow_download_sounds;
 	extern	cvar_t *allow_download_maps;
-	extern	int		file_from_pak; // ZOID did file come from pak?
-	int offset = 0;
+	int		offset, result;
+
+	offset = 0;
 
 	name = Cmd_Argv(1);
 
@@ -341,33 +343,46 @@ void SV_BeginDownload_f(void)
 
 
 	if (sv_client->download)
-		FS_FreeFile (sv_client->download);
+	{
+		Z_Free (sv_client->download);
+		sv_client->download = NULL;
+	}
 
-	sv_client->downloadsize = FS_LoadFile (name, (void **)&sv_client->download);
-	sv_client->downloadcount = offset;
-
-	if (offset > sv_client->downloadsize)
-		sv_client->downloadcount = sv_client->downloadsize;
-
-	if (!sv_client->download
+	file = FS_FOpen (name, FS_MODE_READ);
+	if(file)
+	{
 		// special check for maps, if it came from a pak file, don't allow
 		// download  ZOID
-		|| (strncmp(name, "maps/", 5) == 0 && file_from_pak))
-	{
-		Com_DPrintf ("Couldn't download %s to %s\n", name, sv_client->name);
-		if (sv_client->download) {
-			FS_FreeFile (sv_client->download);
+		if(!(strncmp(name, "maps/", 5) == 0 && FS_FCheckFlags(file, FS_TYPE_PAK)))
+		{
+			sv_client->downloadcount = offset;
+			sv_client->downloadsize = FS_FLength(file);
+			sv_client->download = Z_Malloc (sv_client->downloadsize);
+
+			if (offset > sv_client->downloadsize)
+				sv_client->downloadcount = sv_client->downloadsize;
+
+			result = FS_FRead(file, sv_client->download, sv_client->downloadsize);
+			if(result == sv_client->downloadsize)
+			{
+				FS_FClose(file);
+				SV_NextDownload_f ();
+				Com_DPrintf ("Downloading %s to %s\n", name, sv_client->name);
+				return;
+			}
+
+			Z_Free (sv_client->download);
 			sv_client->download = NULL;
 		}
 
-		MSG_WriteByte (&sv_client->netchan.message, svc_download);
-		MSG_WriteShort (&sv_client->netchan.message, -1);
-		MSG_WriteByte (&sv_client->netchan.message, 0);
-		return;
+		FS_FClose(file);
 	}
 
-	SV_NextDownload_f ();
-	Com_DPrintf ("Downloading %s to %s\n", name, sv_client->name);
+	Com_DPrintf ("Couldn't download %s to %s\n", name, sv_client->name);
+
+	MSG_WriteByte (&sv_client->netchan.message, svc_download);
+	MSG_WriteShort (&sv_client->netchan.message, -1);
+	MSG_WriteByte (&sv_client->netchan.message, 0);
 }
 
 

@@ -430,18 +430,18 @@ void Cvar_WriteVariables (char *path)
 {
 	cvar_t	*var;
 	char	buffer[1024];
-	FILE	*f;
+	file_t	*f;
 
-	f = fopen (path, "a");
+	f = FS_FOpen (path, FS_MODE_APPEND | FS_PATH_GAMEDIR | FS_FLAG_TEXT);
 	for (var = cvar_vars ; var ; var = var->next)
 	{
 		if (var->flags & CVAR_ARCHIVE)
 		{
 			Com_sprintf (buffer, sizeof(buffer), "set %s \"%s\"\n", var->name, var->string);
-			fprintf (f, "%s", buffer);
+			FS_FPrintf (f, "%s", buffer);
 		}
 	}
-	fclose (f);
+	FS_FClose (f);
 }
 
 /*

@@ -1828,9 +1828,8 @@ void M_Menu_Credits_f( void )
 	char	*p;
 	int		isdeveloper = 0;
 
-	creditsBuffer = NULL;
-	count = FS_LoadFile ("credits", &creditsBuffer);
-	if (count != -1)
+	creditsBuffer = FS_LoadFile ("credits", &count, FS_PATH_ALL);
+	if (creditsBuffer)
 	{
 		p = creditsBuffer;
 		for (n = 0; n < 255; n++)
@@ -1853,7 +1852,7 @@ void M_Menu_Credits_f( void )
 				break;
 		}
 		creditsIndex[++n] = 0;
-		credits = creditsIndex;
+		credits = (const char **)creditsIndex;
 	}
 	else
 	{
@@ -2049,22 +2048,22 @@ qboolean	m_savevalid[MAX_SAVEGAMES];
 void Create_Savestrings (void)
 {
 	int		i;
-	FILE	*f;
+	file_t	*file;
 	char	name[MAX_OSPATH];
 
 	for (i=0 ; i<MAX_SAVEGAMES ; i++)
 	{
-		Com_sprintf (name, sizeof(name), "%s/save/save%i/server.ssv", FS_Gamedir(), i);
-		f = fopen (name, "rb");
-		if (!f)
+		Com_sprintf (name, sizeof(name), "save/save%i/server.ssv", i);
+		file = FS_FOpen (name, FS_MODE_READ | FS_PATH_GAMEDIR | FS_TYPE_RFS);
+		if (!file)
 		{
 			strcpy (m_savestrings[i], "<EMPTY>");
 			m_savevalid[i] = false;
 		}
 		else
 		{
-			FS_Read (m_savestrings[i], sizeof(m_savestrings[i]), f);
-			fclose (f);
+			FS_FRead (file, m_savestrings[i], sizeof(m_savestrings[i]));
+			FS_FClose (file);
 			m_savevalid[i] = true;
 		}
 	}
@@ -2509,6 +2508,13 @@ void StartServerActionFunc( void *self )
 
 void StartServer_MenuInit( void )
 {
+	char	shortname[MAX_TOKEN_CHARS];
+	char	longname[MAX_TOKEN_CHARS];
+	char	scratch[200];
+	char	*buffer, *parseptr;
+	int		length;
+	int		i, j, l;
+
 	static const char *dm_coop_names[] =
 	{
 		"deathmatch",
@@ -2527,43 +2533,22 @@ void StartServer_MenuInit( void )
 	};
 //PGM
 //=======
-	char *buffer;
-	char  mapsname[1024];
-	char *s;
-	int length;
-	int i;
-	FILE *fp;
 
 	/*
 	** load the list of map names
 	*/
-	Com_sprintf( mapsname, sizeof( mapsname ), "%s/maps.lst", FS_Gamedir() );
-	if ( ( fp = fopen( mapsname, "rb" ) ) == 0 )
+	if (!(buffer = FS_LoadFile("maps.lst", &length, FS_PATH_GAMEDIR | FS_TYPE_RFS)))
 	{
-		if ( ( length = FS_LoadFile( "maps.lst", ( void ** ) &buffer ) ) == -1 )
+		if (!(buffer = FS_LoadFile("maps.lst", &length, FS_PATH_ALL)))
 			Com_Error( ERR_DROP, "couldn't find maps.lst\n" );
 	}
-	else
-	{
-#ifdef _WIN32
-		length = filelength( fileno( fp  ) );
-#else
-		fseek(fp, 0, SEEK_END);
-		length = ftell(fp);
-		fseek(fp, 0, SEEK_SET);
-#endif
-		buffer = malloc( length );
-		fread( buffer, length, 1, fp );
-	}
 
-	s = buffer;
+	parseptr = buffer;
 
-	i = 0;
-	while ( i < length )
+	for(i = 0; i < length; i++)
 	{
-		if ( s[i] == '\r' )
+		if ( parseptr[i] == '\n' )
 			nummaps++;
-		i++;
 	}
 
 	if ( nummaps == 0 )
@@ -2572,20 +2557,13 @@ void StartServer_MenuInit( void )
 	mapnames = malloc( sizeof( char * ) * ( nummaps + 1 ) );
 	memset( mapnames, 0, sizeof( char * ) * ( nummaps + 1 ) );
 
-	s = buffer;
-
 	for ( i = 0; i < nummaps; i++ )
 	{
-    char  shortname[MAX_TOKEN_CHARS];
-    char  longname[MAX_TOKEN_CHARS];
-		char  scratch[200];
-		int		j, l;
-
-		strcpy( shortname, COM_Parse( &s ) );
+		strcpy( shortname, COM_Parse( &parseptr ) );
 		l = strlen(shortname);
 		for (j=0 ; j<l ; j++)
 			shortname[j] = toupper(shortname[j]);
-		strcpy( longname, COM_Parse( &s ) );
+		strcpy( longname, COM_Parse( &parseptr ) );
 		Com_sprintf( scratch, sizeof( scratch ), "%s\n%s", longname, shortname );
 
 		mapnames[i] = malloc( strlen( scratch ) + 1 );
@@ -2593,15 +2571,7 @@ void StartServer_MenuInit( void )
 	}
 	mapnames[nummaps] = 0;
 
-	if ( fp != 0 )
-	{
-		fp = 0;
-		free( buffer );
-	}
-	else
-	{
-		FS_FreeFile( buffer );
-	}
+	FS_FreeFile( buffer );
 
 	/*
 	** initialize the menu stuff
@@ -2613,7 +2583,7 @@ void StartServer_MenuInit( void )
 	s_startmap_list.generic.x	= 0;
 	s_startmap_list.generic.y	= 0;
 	s_startmap_list.generic.name	= "initial map";
-	s_startmap_list.itemnames = mapnames;
+	s_startmap_list.itemnames = (const char **)mapnames;
 
 	s_rules_box.generic.type = MTYPE_SPINCONTROL;
 	s_rules_box.generic.x	= 0;
@@ -3405,7 +3375,7 @@ static void RateCallback( void *unused )
 
 static void ModelCallback( void *unused )
 {
-	s_player_skin_box.itemnames = s_pmi[s_player_model_box.curvalue].skindisplaynames;
+	s_player_skin_box.itemnames = (const char **)s_pmi[s_player_model_box.curvalue].skindisplaynames;
 	s_player_skin_box.curvalue = 0;
 }
 
@@ -3450,8 +3420,6 @@ static qboolean PlayerConfig_ScanDirectories( void )
 	char **dirnames;
 	char *path = NULL;
 	int i;
-
-	extern char **FS_ListFiles( char *, int *, unsigned, unsigned );
 
 	s_numplayermodels = 0;
 
@@ -3694,7 +3662,7 @@ qboolean PlayerConfig_MenuInit( void )
 	s_player_model_box.generic.callback = ModelCallback;
 	s_player_model_box.generic.cursor_offset = -48;
 	s_player_model_box.curvalue = currentdirectoryindex;
-	s_player_model_box.itemnames = s_pmnames;
+	s_player_model_box.itemnames = (const char **)s_pmnames;
 
 	s_player_skin_title.generic.type = MTYPE_SEPARATOR;
 	s_player_skin_title.generic.name = "skin";
@@ -3708,7 +3676,7 @@ qboolean PlayerConfig_MenuInit( void )
 	s_player_skin_box.generic.callback = 0;
 	s_player_skin_box.generic.cursor_offset = -48;
 	s_player_skin_box.curvalue = currentskinindex;
-	s_player_skin_box.itemnames = s_pmi[currentdirectoryindex].skindisplaynames;
+	s_player_skin_box.itemnames = (const char **)s_pmi[currentdirectoryindex].skindisplaynames;
 
 	s_player_hand_title.generic.type = MTYPE_SEPARATOR;
 	s_player_hand_title.generic.name = "handedness";

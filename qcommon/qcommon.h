@@ -63,6 +63,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define CPUSTRING "sparc"
 #endif
 
+#elif defined __psp__
+
+#define BUILDSTRING "PSP"
+#define	CPUSTRING	"mips"
+
 #else	// !WIN32
 
 #define BUILDSTRING "NON-WIN32"
@@ -667,8 +672,8 @@ qboolean	CM_AreasConnected (int area1, int area2);
 int			CM_WriteAreaBits (byte *buffer, int area);
 qboolean	CM_HeadnodeVisible (int headnode, byte *visbits);
 
-void		CM_WritePortalState (FILE *f);
-void		CM_ReadPortalState (FILE *f);
+void		CM_WritePortalState (file_t *file);
+void		CM_ReadPortalState (file_t *file);
 
 /*
 ==============================================================
@@ -692,27 +697,37 @@ FILESYSTEM
 ==============================================================
 */
 
-void	FS_InitFilesystem (void);
-void	FS_SetGamedir (char *dir);
-char	*FS_Gamedir (void);
-char	*FS_NextPath (char *prevpath);
-void	FS_ExecAutoexec (void);
+qboolean	FS_FileExists (const char *filename, int flags);
+qboolean	FS_FileRemove (const char *filename, int flags);
+qboolean	FS_FileRename (const char *oldname, const char *newname, int flags);
+void		FS_CreatePath (char *path);
 
-int		FS_FOpenFile (char *filename, FILE **file);
-void	FS_FCloseFile (FILE *f);
+file_t		*FS_FOpen (const char *filename, int flags);
 // note: this can't be called from another DLL, due to MS libc issues
+qboolean	FS_FCheckFlags (file_t *file, int flags);
+off_t		FS_FLength (file_t *file);
+off_t		FS_FRead (file_t *file, const void *buffer, size_t size);
+off_t		FS_FWrite (file_t *file, const void *buffer, size_t size);
+int			FS_FPrintf (file_t *file, const char *format, ...);
+int			FS_FSeek (file_t *file, off_t offset, int whence);
+off_t		FS_FTell (file_t *file);
+qboolean	FS_FCopy (file_t *outfile, file_t *infile);
+void		FS_FClose (file_t *file);
 
-int		FS_LoadFile (char *path, void **buffer);
+byte		*FS_LoadFile (const char *path, size_t *size, int flags);
 // a null buffer will just return the file length without loading
 // a -1 length is not present
+void		FS_FreeFile (void *buffer);
+qboolean	FS_WriteFile(const char *path, const void *buffer, size_t len, int flags);
 
-void	FS_Read (void *buffer, int len, FILE *f);
-// properly handles partial reads
+const char	*FS_WriteDir (int flags);
+void		FS_ExecAutoexec (void);
+void		FS_SetGamedir (char *dir);
 
-void	FS_FreeFile (void *buffer);
+char		**FS_ListFiles(char *findname, int *numfiles, unsigned musthave, unsigned canthave);
+char		*FS_NextPath (char *prevpath);
 
-void	FS_CreatePath (char *path);
-
+void		FS_InitFilesystem (void);
 
 /*
 ==============================================================
@@ -755,7 +770,7 @@ extern	cvar_t	*dedicated;
 extern	cvar_t	*host_speeds;
 extern	cvar_t	*log_stats;
 
-extern	FILE *log_stats_file;
+extern	file_t *log_stats_file;
 
 // host_speeds times
 extern	int		time_before_game;

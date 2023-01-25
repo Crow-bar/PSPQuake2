@@ -225,9 +225,9 @@ void Com_PageInMemory (byte *buffer, int size);
 //=============================================
 
 // portable case insensitive compare
-int Q_stricmp (char *s1, char *s2);
-int Q_strcasecmp (char *s1, char *s2);
-int Q_strncasecmp (char *s1, char *s2, int n);
+int Q_stricmp (const char *s1, const char *s2);
+int Q_strcasecmp (const char *s1, const char *s2);
+int Q_strncasecmp (const char *s1, const char *s2, int n);
 
 //=============================================
 
@@ -293,6 +293,43 @@ void	Sys_FindClose (void);
 void Sys_Error (char *error, ...);
 void Com_Printf (char *msg, ...);
 
+/*
+==========================================================
+
+FILESYSTEM
+
+==========================================================
+*/
+
+typedef struct file_s	file_t;
+
+// flags
+#define FS_MODE_APPEND      0x00000000
+#define FS_MODE_READ        0x00000001
+#define FS_MODE_WRITE       0x00000002
+#define FS_MODE_RW          0x00000003
+#define FS_MODE_MASK        0x0000000f
+
+#define FS_PATH_ALL         0x00000000
+#define FS_PATH_ROOTDIR     0x00000010
+#define FS_PATH_BASEDIR     0x00000020
+#define FS_PATH_GAMEDIR     0x00000040
+#define FS_PATH_CUSTOMDIR   0x00000080
+#define FS_PATH_MASK        0x000000f0
+
+#define FS_TYPE_ALL         0x00000000
+#define FS_TYPE_RFS         0x00000100
+#define FS_TYPE_PAK         0x00000200
+#define FS_TYPE_MASK        0x00000f00
+
+#define FS_FLAG_TEXT        0x00001000
+#define FS_FLAG_FLUSH       0x00002000
+#define FS_FLAG_MASK        0x0000f000
+
+// seek mode
+#define FS_SEEK_SET         0
+#define FS_SEEK_CUR         1
+#define FS_SEEK_END         2
 
 /*
 ==========================================================

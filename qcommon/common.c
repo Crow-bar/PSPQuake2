@@ -21,8 +21,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qcommon.h"
 #include <setjmp.h>
 
-#define	MAXPRINTMSG	4096
-
 #define MAX_NUM_ARGVS	50
 
 
@@ -34,7 +32,7 @@ int		realtime;
 jmp_buf abortframe;		// an ERR_DROP occured, exit the entire frame
 
 
-FILE	*log_stats_file;
+file_t	*log_stats_file;
 
 cvar_t	*host_speeds;
 cvar_t	*log_stats;
@@ -45,7 +43,7 @@ cvar_t	*logfile_active;	// 1 = buffer log, 2 = flush after each print
 cvar_t	*showtrace;
 cvar_t	*dedicated;
 
-FILE	*logfile;
+file_t	*logfile;
 
 int			server_state;
 
@@ -101,7 +99,7 @@ to the apropriate place.
 void Com_Printf (char *fmt, ...)
 {
 	va_list		argptr;
-	char		msg[MAXPRINTMSG];
+	char		msg[MAX_PRINT_MSG];
 
 	va_start (argptr,fmt);
 	vsprintf (msg,fmt,argptr);
@@ -126,17 +124,13 @@ void Com_Printf (char *fmt, ...)
 	// logfile
 	if (logfile_active && logfile_active->value)
 	{
-		char	name[MAX_QPATH];
-		
 		if (!logfile)
 		{
-			Com_sprintf (name, sizeof(name), "%s/qconsole.log", FS_Gamedir ());
-			logfile = fopen (name, "w");
+			logfile = FS_FOpen ("qconsole.log",
+				FS_MODE_WRITE | FS_PATH_ROOTDIR | FS_FLAG_TEXT | FS_FLAG_FLUSH);
 		}
 		if (logfile)
-			fprintf (logfile, "%s", msg);
-		if (logfile_active->value > 1)
-			fflush (logfile);		// force it to save every time
+			FS_FPrintf (logfile, "%s", msg);
 	}
 }
 
@@ -151,7 +145,7 @@ A Com_Printf that only shows up if the "developer" cvar is set
 void Com_DPrintf (char *fmt, ...)
 {
 	va_list		argptr;
-	char		msg[MAXPRINTMSG];
+	char		msg[MAX_PRINT_MSG];
 		
 	if (!developer || !developer->value)
 		return;			// don't confuse non-developers with techie stuff...
@@ -175,7 +169,7 @@ do the apropriate things.
 void Com_Error (int code, char *fmt, ...)
 {
 	va_list		argptr;
-	static char		msg[MAXPRINTMSG];
+	static char		msg[MAX_PRINT_MSG];
 	static	qboolean	recursive;
 
 	if (recursive)
@@ -208,7 +202,7 @@ void Com_Error (int code, char *fmt, ...)
 
 	if (logfile)
 	{
-		fclose (logfile);
+		FS_FClose (logfile);
 		logfile = NULL;
 	}
 
@@ -231,7 +225,7 @@ void Com_Quit (void)
 
 	if (logfile)
 	{
-		fclose (logfile);
+		FS_FClose (logfile);
 		logfile = NULL;
 	}
 
@@ -1503,18 +1497,18 @@ void Qcommon_Frame (int msec)
 		{
 			if ( log_stats_file )
 			{
-				fclose( log_stats_file );
+				FS_FClose( log_stats_file );
 				log_stats_file = 0;
 			}
-			log_stats_file = fopen( "stats.log", "w" );
+			log_stats_file = FS_FOpen( "stats.log", FS_MODE_WRITE | FS_PATH_ROOTDIR | FS_FLAG_TEXT );
 			if ( log_stats_file )
-				fprintf( log_stats_file, "entities,dlights,parts,frame time\n" );
+				FS_FPrintf( log_stats_file, "entities,dlights,parts,frame time\n" );
 		}
 		else
 		{
 			if ( log_stats_file )
 			{
-				fclose( log_stats_file );
+				FS_FClose( log_stats_file );
 				log_stats_file = 0;
 			}
 		}

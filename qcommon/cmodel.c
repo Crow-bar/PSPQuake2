@@ -588,7 +588,7 @@ cmodel_t *CM_LoadMap (char *name, qboolean clientload, unsigned *checksum)
 	//
 	// load the file
 	//
-	length = FS_LoadFile (name, (void **)&buf);
+	buf = (unsigned *)FS_LoadFile (name, &length, FS_PATH_ALL);
 	if (!buf)
 		Com_Error (ERR_DROP, "Couldn't load %s", name);
 
@@ -1718,9 +1718,9 @@ CM_WritePortalState
 Writes the portal state to a savegame file
 ===================
 */
-void	CM_WritePortalState (FILE *f)
+void	CM_WritePortalState (file_t *file)
 {
-	fwrite (portalopen, sizeof(portalopen), 1, f);
+	FS_FWrite (file, portalopen, sizeof(portalopen));
 }
 
 /*
@@ -1731,9 +1731,9 @@ Reads the portal state from a savegame file
 and recalculates the area connections
 ===================
 */
-void	CM_ReadPortalState (FILE *f)
+void	CM_ReadPortalState (file_t *file)
 {
-	FS_Read (portalopen, sizeof(portalopen), f);
+	FS_FRead (file, portalopen, sizeof(portalopen));
 	FloodAreaConnections ();
 }
 

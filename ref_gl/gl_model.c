@@ -224,7 +224,7 @@ model_t *Mod_ForName (char *name, qboolean crash)
 	//
 	// load the file
 	//
-	modfilelen = ri.FS_LoadFile (mod->name, &buf);
+	buf = ri.FS_LoadFile (mod->name, &modfilelen, FS_PATH_ALL);
 	if (!buf)
 	{
 		if (crash)

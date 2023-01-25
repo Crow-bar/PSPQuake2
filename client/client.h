@@ -140,7 +140,7 @@ typedef struct
 	//
 	// non-gameserver infornamtion
 	// FIXME: move this cinematic stuff into the cin_t structure
-	FILE		*cinematic_file;
+	file_t		*cinematic_file;
 	int			cinematictime;		// cls.realtime for first cinematic frame
 	int			cinematicframe;
 	char		cinematicpalette[768];
@@ -225,7 +225,7 @@ typedef struct
 
 	int			challenge;			// from the server to use for connecting
 
-	FILE		*download;			// file transfer from server
+	file_t		*download;			// file transfer from server
 	char		downloadtempname[MAX_OSPATH];
 	char		downloadname[MAX_OSPATH];
 	int			downloadnumber;
@@ -235,7 +235,7 @@ typedef struct
 // demo recording info must be here, so it isn't cleared on level change
 	qboolean	demorecording;
 	qboolean	demowaiting;	// don't record until a non-delta message is received
-	FILE		*demofile;
+	file_t		*demofile;
 } client_static_t;
 
 extern client_static_t	cls;
