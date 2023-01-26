@@ -51,8 +51,6 @@ static struct
 	int         cursor_y;
 } osk_state = {0};
 
-// menu.c
-void M_DrawTextBox (int x, int y, int width, int lines);
 
 /*
 ================
@@ -84,6 +82,7 @@ qboolean OSK_IsActive(void)
 /*
 ================
 OSK_KeyEvent
+
 event interception
 ================
 */
@@ -152,10 +151,43 @@ qboolean OSK_KeyEvent(int *key, qboolean down)
 		*key = ' ';
 		break;
 	default:
+		skip_event = false;
 		break;
 	}
 
 	return skip_event;
+}
+
+/*
+================
+OSK_DrawBox
+================
+*/
+static void OSK_DrawBox(int x, int y, int width, int lines)
+{
+	int     cx, cy;
+	int     i, j;
+
+	// draw left side
+	re.DrawChar (x, y, 1);
+	for (i = 0, cy = y + 8; i < lines; i++, cy += 8)
+		re.DrawChar (x, cy, 4);
+	re.DrawChar (x, cy, 7);
+
+	// draw middle
+	for(i = 0, cx = x + 8; i < width; i++, cx += 8)
+	{
+		re.DrawChar (cx, y, 2);
+		for (j = 0, cy = y + 8; j < lines; j++, cy += 8)
+			re.DrawChar (cx, cy, 5);
+		re.DrawChar (cx, cy, 8);
+	}
+
+	// draw right side
+	re.DrawChar (cx, y, 3);
+	for (i = 0, cy = y + 8; i < lines; i++, cy += 8)
+		re.DrawChar (cx, cy, 6);
+	re.DrawChar (cx, cy, 9);
 }
 
 /*
@@ -171,10 +203,10 @@ void OSK_Draw(void)
 	if(!osk_state.active)
 		return;
 
-	pos_x = (viddef.width - OSK_MAX_ROWS * 16) / 2;
-	pos_y = (viddef.height - OSK_MAX_LINES * 16) / 8;
+	pos_x = (viddef.width - OSK_MAX_ROWS * 16) >> 1;
+	pos_y = (viddef.height - OSK_MAX_LINES * 16) >> 3;
 
-	M_DrawTextBox(pos_x - 8, pos_y - 8, OSK_MAX_ROWS * 2 - 1, OSK_MAX_LINES * 2 - 1);
+	OSK_DrawBox(pos_x - 8, pos_y - 8, OSK_MAX_ROWS * 2 - 1, OSK_MAX_LINES * 2 - 1);
 
 	for(y = 0; y < OSK_MAX_LINES; y++)
 	{
