@@ -588,7 +588,7 @@ cmodel_t *CM_LoadMap (char *name, qboolean clientload, unsigned *checksum)
 	//
 	// load the file
 	//
-	buf = (unsigned *)FS_LoadFile (name, &length, FS_PATH_ALL);
+	buf = (unsigned *)FS_LoadFile (name, &length, FS_PATH_ALL | FS_FLAG_TEMP);
 	if (!buf)
 		Com_Error (ERR_DROP, "Couldn't load %s", name);
 
@@ -618,8 +618,6 @@ cmodel_t *CM_LoadMap (char *name, qboolean clientload, unsigned *checksum)
 	CMod_LoadAreaPortals (&header.lumps[LUMP_AREAPORTALS]);
 	CMod_LoadVisibility (&header.lumps[LUMP_VISIBILITY]);
 	CMod_LoadEntityString (&header.lumps[LUMP_ENTITIES]);
-
-	FS_FreeFile (buf);
 
 	CM_InitBoxHull ();
 

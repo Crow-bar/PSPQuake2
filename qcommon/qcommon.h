@@ -21,11 +21,20 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // qcommon.h -- definitions common between client and server, but not game.dll
 
 #include "../game/q_shared.h"
+#include "zone.h"
 
 
 #define	VERSION		3.19
 
 #define	BASEDIRNAME	"baseq2"
+
+#ifndef HUNKSIZE
+#ifdef __psp__
+#define HUNKSIZE	0xa00000	// 10MB
+#else
+#define HUNKSIZE	0x2000000	// 32MB
+#endif
+#endif
 
 #ifdef WIN32
 
@@ -755,6 +764,7 @@ void 		Com_Printf (char *fmt, ...);
 void 		Com_DPrintf (char *fmt, ...);
 void 		Com_Error (int code, char *fmt, ...);
 void 		Com_Quit (void);
+void		Com_ClearMemory (qboolean server);
 
 int			Com_ServerState (void);		// this should have just been a cvar...
 void		Com_SetServerState (int state);
@@ -777,11 +787,6 @@ extern	int		time_before_game;
 extern	int		time_after_game;
 extern	int		time_before_ref;
 extern	int		time_after_ref;
-
-void Z_Free (void *ptr);
-void *Z_Malloc (int size);			// returns 0 filled memory
-void *Z_TagMalloc (int size, int tag);
-void Z_FreeTags (int tag);
 
 void Qcommon_Init (int argc, char **argv);
 void Qcommon_Frame (int msec);

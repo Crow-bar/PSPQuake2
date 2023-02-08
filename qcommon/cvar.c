@@ -226,11 +226,13 @@ cvar_t *Cvar_Set2 (char *var_name, char *value, qboolean force)
 			{
 				var->string = CopyString(value);
 				var->value = atof (var->string);
+#if 0
 				if (!strcmp(var->name, "game"))
 				{
 					FS_SetGamedir (var->string);
 					FS_ExecAutoexec ();
 				}
+#endif
 			}
 			return var;
 		}

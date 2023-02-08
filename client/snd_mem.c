@@ -40,7 +40,7 @@ void ResampleSfx (sfx_t *sfx, int inrate, int inwidth, byte *data)
 	int		sample, samplefrac, fracstep;
 	sfxcache_t	*sc;
 	
-	sc = sfx->cache;
+	sc = Cache_Check (&sfx->cache);
 	if (!sc)
 		return;
 
@@ -110,7 +110,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 		return NULL;
 
 // see if still in memory
-	sc = s->cache;
+	sc = Cache_Check (&s->cache);
 	if (sc)
 		return sc;
 
@@ -128,7 +128,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 
 //	Com_Printf ("loading %s\n",namebuffer);
 
-	data = FS_LoadFile (namebuffer, &size, FS_PATH_ALL);
+	data = FS_LoadFile (namebuffer, &size, FS_PATH_ALL | FS_FLAG_TEMP);
 
 	if (!data)
 	{
@@ -140,7 +140,6 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	if (info.channels != 1)
 	{
 		Com_Printf ("%s is a stereo sample\n",s->name);
-		FS_FreeFile (data);
 		return NULL;
 	}
 
@@ -149,12 +148,9 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 
 	len = len * info.width * info.channels;
 
-	sc = s->cache = Z_Malloc (len + sizeof(sfxcache_t));
+	sc = Cache_Alloc ( &s->cache, len + sizeof(sfxcache_t), s->name);
 	if (!sc)
-	{
-		FS_FreeFile (data);
 		return NULL;
-	}
 	
 	sc->length = info.samples;
 	sc->loopstart = info.loopstart;
@@ -163,8 +159,6 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 	sc->stereo = info.channels;
 
 	ResampleSfx (s, sc->speed, sc->width, data + info.dataofs);
-
-	FS_FreeFile (data);
 
 	return sc;
 }

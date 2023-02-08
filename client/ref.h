@@ -158,6 +158,7 @@ typedef struct
 	struct image_s *(*RegisterPic) (char *name);
 	void	(*SetSky) (char *name, float rotate, vec3_t axis);
 	void	(*EndRegistration) (void);
+	void	(*ClearRegistered) (void);
 
 	void	(*RenderFrame) (refdef_t *fd);
 
@@ -220,6 +221,19 @@ typedef struct
 	qboolean	(*Vid_GetModeInfo)( int *width, int *height, int mode );
 	void		(*Vid_MenuInit)( void );
 	void		(*Vid_NewWindow)( int width, int height );
+
+	void	*(*Hunk_Alloc) ( int size );
+	void	*(*Hunk_AllocName) ( int size, const char *name );
+	void	*(*Hunk_HighAllocName) ( int size, const char *name );
+	int		 (*Hunk_LowMark) ( void );
+	void	 (*Hunk_FreeToLowMark) ( int mark );
+	int		 (*Hunk_HighMark) ( void );
+	void	 (*Hunk_FreeToHighMark) ( int mark );
+	void	*(*Hunk_TempAlloc) ( int size );
+
+	void	*(*Cache_Check) ( cache_user_t *c );
+	void	 (*Cache_Free) ( cache_user_t *c );
+	void	*(*Cache_Alloc) ( cache_user_t *c, int size, const char *name );
 } refimport_t;
 
 

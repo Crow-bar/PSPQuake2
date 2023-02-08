@@ -1311,6 +1311,22 @@ void R_SetSky (char *name, float rotate, vec3_t axis)
 	}
 }
 
+/*
+============
+R_FreeSky
+============
+*/
+void R_FreeSky (void)
+{
+	int	i;
+
+	for (i = 0; i < 6; i++)
+	{
+		R_FreeImage(r_skytexinfo[i].image);
+		r_skytexinfo[i].image = NULL;
+	}
+}
+
 
 /*
 ===============
@@ -1361,11 +1377,12 @@ refexport_t GetRefAPI (refimport_t rimp)
 	re.api_version = API_VERSION;
 
 	re.BeginRegistration = R_BeginRegistration;
-    re.RegisterModel = R_RegisterModel;
-    re.RegisterSkin = R_RegisterSkin;
+	re.RegisterModel = R_RegisterModel;
+	re.RegisterSkin = R_RegisterSkin;
 	re.RegisterPic = Draw_FindPic;
 	re.SetSky = R_SetSky;
 	re.EndRegistration = R_EndRegistration;
+	re.ClearRegistered = R_ClearRegistered;
 
 	re.RenderFrame = R_RenderFrame;
 

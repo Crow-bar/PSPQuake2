@@ -1055,7 +1055,7 @@ void R_AliasDrawModel (void)
 	extern void R_PolysetDrawSpansConstant8_33( void * );
 	extern void R_PolysetDrawSpansConstant8_66( void * );
 
-	s_pmdl = (dmdl_t *)currentmodel->extradata;
+	s_pmdl = (dmdl_t *)Mod_Extradata (currentmodel);
 
 	if ( r_lerpmodels->value == 0 )
 		currententity->backlerp = 0;

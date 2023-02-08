@@ -66,7 +66,7 @@ typedef struct image_s
 	imagetype_t     type;
 	int             width, height;
 	qboolean        transparent;    // true if any 255 pixels in image
-	int             registration_sequence;  // 0 = free
+	//int             registration_sequence;  // 0 = free
 	byte		*pixels[4];				// mip levels
 } image_t;
 
@@ -764,11 +764,13 @@ qboolean R_Init( void *hInstance, void *wndProc );
 void R_Shutdown (void);
 void R_InitCaches (void);
 void D_FlushCaches (void);
+void R_FreeSky (void);
 
-void	R_ScreenShot_f( void );
+void    R_ScreenShot_f( void );
 void    R_BeginRegistration (char *map);
 struct model_s  *R_RegisterModel (char *name);
 void    R_EndRegistration (void);
+void    R_ClearRegistered (void);
 
 void    R_RenderFrame (refdef_t *fd);
 
@@ -799,7 +801,8 @@ void LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *heigh
 void    R_InitImages (void);
 void	R_ShutdownImages (void);
 image_t *R_FindImage (char *name, imagetype_t type);
-void    R_FreeUnusedImages (void);
+void    R_FreeImage (image_t *image);
+void    R_FreeImages (void);
 
 void	R_GammaCorrectAndSetPalette( const unsigned char *pal );
 

@@ -812,7 +812,35 @@ byte *FS_LoadFile (const char *path, size_t *size, int flags)
 	if (file)
 	{
 		buffersize = file->length;
-		buffer = Z_Malloc(buffersize);
+
+		if(flags & FS_FLAG_NTER)
+			buffersize++;
+
+#if 0
+		if(flags & FS_FLAG_HUNK)
+			Com_DPrintf("FS_LoadFile: Hunk_AllocName (%i, %s)\n", buffersize, path);
+		else if(flags & FS_FLAG_TEMP)
+			Com_DPrintf("FS_LoadFile: Hunk_TempAlloc (%i, %s)\n", buffersize, path);
+		else
+			Com_DPrintf("FS_LoadFile: Z_Malloc (%i, %s)\n", buffersize, path);
+#endif
+
+		if(flags & FS_FLAG_HUNK)
+			buffer = Hunk_AllocName(buffersize, path);
+		else if(flags & FS_FLAG_TEMP)
+			buffer = Hunk_TempAlloc(buffersize);
+		else
+			buffer = Z_Malloc(buffersize);
+
+		if (!buffer)
+			Com_Error (ERR_FATAL, "FS_LoadFile: not enough space for %s", path);
+
+		if(flags & FS_FLAG_NTER)
+		{
+			buffer[buffersize] = 0;
+			buffersize--;
+		}
+
 		FS_FRead (file, buffer, buffersize);
 		FS_FClose (file);
 	}
@@ -894,7 +922,7 @@ pack_t *FS_LoadPackFile (char *packfile)
 	if (numpackfiles > MAX_FILES_IN_PACK)
 		Com_Error (ERR_FATAL, "%s has %i files", packfile, numpackfiles);
 
-	packfiles = Z_Malloc (numpackfiles * sizeof(dpackfile_t));
+	packfiles = Hunk_AllocName (numpackfiles * sizeof(dpackfile_t), "packfile");
 
 	fseek (packhandle, header.dirofs, SEEK_SET);
 	fread (packfiles, numpackfiles, sizeof(dpackfile_t), packhandle);
@@ -914,7 +942,7 @@ pack_t *FS_LoadPackFile (char *packfile)
 		packfiles[i].filelen = LittleLong(packfiles[i].filelen);
 	}
 
-	pack = Z_Malloc (sizeof (pack_t));
+	pack = Hunk_Alloc (sizeof (pack_t));
 	strcpy (pack->filename, packfile);
 	pack->numfiles = numpackfiles;
 	pack->files = packfiles;
@@ -950,7 +978,7 @@ void FS_AddGameDirectory (char *dir, int flags)
 	//
 	// add the directory to the search path
 	//
-	search = Z_Malloc (sizeof(searchpath_t));
+	search = Hunk_Alloc(sizeof(searchpath_t));
 	strcpy (search->filename, dir);
 	search->flags = flags | FS_TYPE_RFS;
 	search->next = fs_searchpaths;
@@ -965,7 +993,7 @@ void FS_AddGameDirectory (char *dir, int flags)
 		pak = FS_LoadPackFile (pakfile);
 		if (!pak)
 			continue;
-		search = Z_Malloc (sizeof(searchpath_t));
+		search = Hunk_Alloc(sizeof(searchpath_t));
 		search->pack = pak;
 		search->flags = flags | FS_TYPE_PAK;
 		search->next = fs_searchpaths;
@@ -1025,7 +1053,7 @@ void FS_SetGamedir (char *dir)
 		Com_Printf ("Gamedir should be a single filename, not a path\n");
 		return;
 	}
-
+#if 0
 	//
 	// free up any current game dir info
 	//
@@ -1040,7 +1068,7 @@ void FS_SetGamedir (char *dir)
 		Z_Free (fs_searchpaths);
 		fs_searchpaths = next;
 	}
-
+#endif
 	//
 	// flush all data, so it will be forced to reload
 	//

@@ -13,7 +13,7 @@ PSP_EBOOT_SFO    = $(BUILDDIR)/PARAM.SFO
 PSP_EBOOT        = $(BUILDDIR)/EBOOT.PBP
 
 BUILD_PRX        = 1
-PSP_LARGE_MEMORY = 1
+PSP_LARGE_MEMORY = 0
 PSP_FW_VERSION   = 660
 
 
@@ -122,6 +122,7 @@ QUAKE2_OBJS = \
 	$(COMMON_DIR)/files.o \
 	$(COMMON_DIR)/md4.o \
 	$(COMMON_DIR)/net_chan.o \
+	$(COMMON_DIR)/zone.o \
 	\
 	$(SERVER_DIR)/sv_ccmds.o \
 	$(SERVER_DIR)/sv_ents.o \

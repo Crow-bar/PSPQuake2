@@ -269,13 +269,13 @@ extern	int	curtime;		// time returned by last Sys_Milliseconds
 
 int		Sys_Milliseconds (void);
 void	Sys_Mkdir (char *path);
-
+#if 0
 // large block stack allocation routines
 void	*Hunk_Begin (int maxsize);
 void	*Hunk_Alloc (int size);
 void	Hunk_Free (void *buf);
 int		Hunk_End (void);
-
+#endif
 // directory searching
 #define SFF_ARCH    0x01
 #define SFF_HIDDEN  0x02
@@ -326,7 +326,10 @@ typedef struct file_s	file_t;
 
 #define FS_FLAG_TEXT        0x00001000
 #define FS_FLAG_FLUSH       0x00002000
-#define FS_FLAG_MASK        0x0000f000
+#define FS_FLAG_HUNK        0x00004000
+#define FS_FLAG_TEMP        0x00008000
+#define FS_FLAG_NTER        0x00010000
+#define FS_FLAG_MASK        0x000ff000
 
 // seek mode
 #define FS_SEEK_SET         0

@@ -172,7 +172,7 @@ typedef struct model_s
 {
 	char		name[MAX_QPATH];
 
-	int			registration_sequence;
+	qboolean	needload;		// bmodels and sprites don't cache normally
 
 	modtype_t	type;
 	int			numframes;
@@ -232,8 +232,10 @@ typedef struct model_s
 
 	// for alias models and sprites
 	image_t		*skins[MAX_MD2SKINS];
-	void		*extradata;
-	int			extradatasize;
+//
+// additional model data
+//
+	cache_user_t	cache;		// only access through Mod_Extradata
 } model_t;
 
 //============================================================================

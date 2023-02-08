@@ -42,7 +42,7 @@ void	R_ImageList_f (void)
 
 	for (i=0, image=r_images ; i<numr_images ; i++, image++)
 	{
-		if (image->registration_sequence <= 0)
+		if (!image->name[0])
 			continue;
 		texels += image->width*image->height;
 		switch (image->type)
@@ -92,13 +92,15 @@ void LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *heigh
 	int		len;
 	int		dataByte, runLength;
 	byte	*out, *pix;
+	int		lowmark;
 
 	*pic = NULL;
 
 	//
 	// load the file
 	//
-	raw = ri.FS_LoadFile (filename, &len, FS_PATH_ALL);
+	lowmark = ri.Hunk_LowMark();
+	raw = ri.FS_LoadFile (filename, &len, FS_PATH_ALL | FS_FLAG_HUNK);
 	if (!raw)
 	{
 		ri.Con_Printf (PRINT_DEVELOPER, "Bad pcx file %s\n", filename);
@@ -129,10 +131,13 @@ void LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *heigh
 		|| pcx->ymax >= 480)
 	{
 		ri.Con_Printf (PRINT_ALL, "Bad pcx file %s\n", filename);
+		ri.Hunk_FreeToLowMark(lowmark);
 		return;
 	}
 
 	out = malloc ( (pcx->ymax+1) * (pcx->xmax+1) );
+	if(!out)
+		ri.Sys_Error (ERR_DROP, "LoadPCX: not enough space for %s", filename);
 
 	*pic = out;
 
@@ -141,6 +146,8 @@ void LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *heigh
 	if (palette)
 	{
 		*palette = malloc(768);
+		if(!*palette)
+			ri.Sys_Error (ERR_DROP, "LoadPCX: not enough space for %s", filename);
 		memcpy (*palette, (byte *)pcx + len - 768, 768);
 	}
 
@@ -176,7 +183,7 @@ void LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *heigh
 		*pic = NULL;
 	}
 
-	ri.FS_FreeFile (pcx);
+	ri.Hunk_FreeToLowMark(lowmark);
 }
 
 /*
@@ -211,13 +218,15 @@ void LoadTGA (char *name, byte **pic, int *width, int *height)
 	int		length;
 	TargaHeader		targa_header;
 	byte			*targa_rgba;
+	int		lowmark;
 
 	*pic = NULL;
 
 	//
 	// load the file
 	//
-	buffer = ri.FS_LoadFile (name, &length, FS_PATH_ALL);
+	lowmark = ri.Hunk_LowMark();
+	buffer = ri.FS_LoadFile (name, &length, FS_PATH_ALL | FS_FLAG_HUNK);
 	if (!buffer)
 	{
 		ri.Con_Printf (PRINT_DEVELOPER, "Bad tga file %s\n", name);
@@ -264,6 +273,8 @@ void LoadTGA (char *name, byte **pic, int *width, int *height)
 		*height = rows;
 
 	targa_rgba = malloc (numPixels*4);
+	if(!targa_rgba)
+		ri.Sys_Error (ERR_DROP, "LoadTGA: not enough space for %s", name);
 	*pic = targa_rgba;
 
 	if (targa_header.id_length != 0)
@@ -377,7 +388,7 @@ void LoadTGA (char *name, byte **pic, int *width, int *height)
 		}
 	}
 
-	ri.FS_FreeFile (buffer);
+	ri.Hunk_FreeToLowMark(lowmark);
 }
 
 
@@ -391,7 +402,7 @@ image_t *R_FindFreeImage (void)
 	// find a free image_t
 	for (i=0, image=r_images ; i<numr_images ; i++,image++)
 	{
-		if (!image->registration_sequence)
+		if (!image->name[0])
 			break;
 	}
 	if (i == numr_images)
@@ -420,7 +431,6 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, imagetype_t t
 	if (strlen(name) >= sizeof(image->name))
 		ri.Sys_Error (ERR_DROP, "Draw_LoadPic: \"%s\" is too long", name);
 	strcpy (image->name, name);
-	image->registration_sequence = registration_sequence;
 
 	image->width = width;
 	image->height = height;
@@ -428,6 +438,8 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, imagetype_t t
 
 	c = width*height;
 	image->pixels[0] = malloc (c);
+	if(!image->pixels[0])
+		ri.Sys_Error (ERR_DROP, "Draw_LoadPic: not enough space for %s", name);
 	image->transparent = false;
 	for (i=0 ; i<c ; i++)
 	{
@@ -451,8 +463,10 @@ image_t *R_LoadWal (char *name)
 	int			ofs;
 	image_t		*image;
 	int			size;
+	int			lowmark;
 
-	mt = (miptex_t *)ri.FS_LoadFile (name, NULL, FS_PATH_ALL);
+	lowmark = ri.Hunk_LowMark();
+	mt = (miptex_t *)ri.FS_LoadFile (name, NULL, FS_PATH_ALL | FS_FLAG_HUNK);
 	if (!mt)
 	{
 		ri.Con_Printf (PRINT_ALL, "R_LoadWal: can't load %s\n", name);
@@ -464,10 +478,11 @@ image_t *R_LoadWal (char *name)
 	image->width = LittleLong (mt->width);
 	image->height = LittleLong (mt->height);
 	image->type = it_wall;
-	image->registration_sequence = registration_sequence;
 
 	size = image->width*image->height * (256+64+16+4)/256;
 	image->pixels[0] = malloc (size);
+	if(!image->pixels[0])
+		ri.Sys_Error (ERR_DROP, "R_LoadWal: not enough space for %s", name);
 	image->pixels[1] = image->pixels[0] + image->width*image->height;
 	image->pixels[2] = image->pixels[1] + image->width*image->height/4;
 	image->pixels[3] = image->pixels[2] + image->width*image->height/16;
@@ -475,7 +490,7 @@ image_t *R_LoadWal (char *name)
 	ofs = LittleLong (mt->offsets[0]);
 	memcpy ( image->pixels[0], (byte *)mt + ofs, size);
 
-	ri.FS_FreeFile ((void *)mt);
+	ri.Hunk_FreeToLowMark(lowmark);
 
 	return image;
 }
@@ -505,10 +520,7 @@ image_t	*R_FindImage (char *name, imagetype_t type)
 	for (i=0, image=r_images ; i<numr_images ; i++,image++)
 	{
 		if (!strcmp(name, image->name))
-		{
-			image->registration_sequence = registration_sequence;
 			return image;
-		}
 	}
 
 	//
@@ -555,25 +567,40 @@ struct image_s *R_RegisterSkin (char *name)
 
 /*
 ================
+R_FreeImage
+================
+*/
+void R_FreeImage (image_t *image)
+{
+	if(!image || !image->name[0])
+		return;
+
+	if(image == r_notexture_mip)
+		return;
+
+	if(image->pixels[0])
+		free (image->pixels[0]);	// the other mip levels just follow
+
+	memset (image, 0, sizeof(*image));
+}
+
+
+/*
+================
 R_FreeUnusedImages
 
 Any image that was not touched on this registration sequence
 will be freed.
 ================
 */
-void R_FreeUnusedImages (void)
+void R_FreeImages (void)
 {
 	int		i;
 	image_t	*image;
 
 	for (i=0, image=r_images ; i<numr_images ; i++, image++)
 	{
-		if (image->registration_sequence == registration_sequence)
-		{
-			Com_PageInMemory ((byte *)image->pixels[0], image->width*image->height);
-			continue;		// used this sequence
-		}
-		if (!image->registration_sequence)
+		if (!image->name[0])
 			continue;		// free texture
 		if (image->type == it_pic)
 			continue;		// don't free pics
@@ -584,7 +611,6 @@ void R_FreeUnusedImages (void)
 }
 
 
-
 /*
 ===============
 R_InitImages
@@ -592,7 +618,7 @@ R_InitImages
 */
 void	R_InitImages (void)
 {
-	registration_sequence = 1;
+
 }
 
 /*
@@ -607,7 +633,7 @@ void	R_ShutdownImages (void)
 
 	for (i=0, image=r_images ; i<numr_images ; i++, image++)
 	{
-		if (!image->registration_sequence)
+		if (!image->name[0])
 			continue;		// free texture
 		// free it
 		free (image->pixels[0]);	// the other mip levels just follow

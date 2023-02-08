@@ -120,6 +120,18 @@ void	VID_Init (void)
 	ri.Cvar_SetValue = Cvar_SetValue;
 	ri.Vid_GetModeInfo = VID_GetModeInfo;
 
+	ri.Hunk_Alloc = Hunk_Alloc;
+	ri.Hunk_AllocName = Hunk_AllocName;
+	ri.Hunk_HighAllocName = Hunk_HighAllocName;
+	ri.Hunk_LowMark = Hunk_LowMark;
+	ri.Hunk_FreeToLowMark = Hunk_FreeToLowMark;
+	ri.Hunk_HighMark = Hunk_HighMark;
+	ri.Hunk_FreeToHighMark = Hunk_FreeToHighMark;
+	ri.Hunk_TempAlloc = Hunk_TempAlloc;
+	ri.Cache_Check = Cache_Check;
+	ri.Cache_Free = Cache_Free;
+	ri.Cache_Alloc = Cache_Alloc;
+
 	re = GetRefAPI(ri);
 
 	if (re.api_version != API_VERSION)

@@ -45,7 +45,7 @@ void R_DrawSprite (void)
 	dsprframe_t	*s_psprframe;
 
 
-	s_psprite = (dsprite_t *)currentmodel->extradata;
+	s_psprite = (dsprite_t *)currentmodel->cache.data;
 #if 0
 	if (currententity->frame >= s_psprite->numframes
 		|| currententity->frame < 0)

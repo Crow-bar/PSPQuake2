@@ -370,8 +370,8 @@ Cmd_Exec_f
 */
 void Cmd_Exec_f (void)
 {
-	char	*f, *f2;
-	int		len;
+	char	*f;
+	int		mark;
 
 	if (Cmd_Argc () != 2)
 	{
@@ -379,23 +379,17 @@ void Cmd_Exec_f (void)
 		return;
 	}
 
-	f = FS_LoadFile (Cmd_Argv(1), &len, FS_PATH_ALL);
+	mark = Hunk_LowMark ();
+	f = (char *)FS_LoadFile (Cmd_Argv(1), NULL, FS_PATH_ALL | FS_FLAG_HUNK | FS_FLAG_NTER);
 	if (!f)
 	{
 		Com_Printf ("couldn't exec %s\n",Cmd_Argv(1));
 		return;
 	}
 	Com_Printf ("execing %s\n",Cmd_Argv(1));
-	
-	// the file doesn't have a trailing 0, so we need to copy it off
-	f2 = Z_Malloc(len+1);
-	memcpy (f2, f, len);
-	f2[len] = 0;
 
-	Cbuf_InsertText (f2);
-
-	Z_Free (f2);
-	FS_FreeFile (f);
+	Cbuf_InsertText (f);
+	Hunk_FreeToLowMark (mark);
 }
 
 

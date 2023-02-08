@@ -68,14 +68,20 @@ void SCR_LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *h
 	int		x, y;
 	int		len;
 	int		dataByte, runLength;
-	byte	*out, *pix;
+	byte	*pix;
+	int		lowmark;
+	qboolean	allocated;
 
-	*pic = NULL;
+	if(!pic)
+		return;
+
+	allocated = false;
 
 	//
 	// load the file
 	//
-	raw = FS_LoadFile (filename, &len, FS_PATH_ALL);
+	lowmark = Hunk_LowMark();
+	raw = FS_LoadFile (filename, &len, FS_PATH_ALL | FS_FLAG_HUNK);
 	if (!raw)
 		return;	// Com_Printf ("Bad pcx file %s\n", filename);
 
@@ -96,17 +102,15 @@ void SCR_LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *h
 		return;
 	}
 
-	out = Z_Malloc ( (pcx->ymax+1) * (pcx->xmax+1) );
-
-	*pic = out;
-
-	pix = out;
-
-	if (palette)
+	if(!*pic)
 	{
-		*palette = Z_Malloc(768);
-		memcpy (*palette, (byte *)pcx + len - 768, 768);
+		*pic = malloc ( (pcx->ymax+1) * (pcx->xmax+1) );
+		if(!*pic)
+			Com_Error (ERR_DROP, "LoadPCX: not enough space for %s", filename);
+		allocated = true;
 	}
+
+	pix = *pic;
 
 	if (width)
 		*width = pcx->xmax+1;
@@ -136,11 +140,27 @@ void SCR_LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *h
 	if ( raw - (byte *)pcx > len)
 	{
 		Com_Printf ("PCX file %s was malformed", filename);
-		Z_Free (*pic);
-		*pic = NULL;
+		if (allocated)
+		{
+			free (*pic);
+			*pic = NULL;
+		}
+	}
+	else
+	{
+		if (palette)
+		{
+			if (!*palette)
+			{
+				*palette = malloc(768);
+				if(!*palette)
+					Com_Error (ERR_DROP, "LoadPCX: not enough space for palette");
+			}
+			memcpy (*palette, (byte *)pcx + len - 768, 768);
+		}
 	}
 
-	FS_FreeFile (pcx);
+	Hunk_FreeToLowMark(lowmark);
 }
 
 //=============================================================
@@ -155,12 +175,12 @@ void SCR_StopCinematic (void)
 	cl.cinematictime = 0;	// done
 	if (cin.pic)
 	{
-		Z_Free (cin.pic);
+		free (cin.pic);
 		cin.pic = NULL;
 	}
 	if (cin.pic_pending)
 	{
-		Z_Free (cin.pic_pending);
+		free (cin.pic_pending);
 		cin.pic_pending = NULL;
 	}
 	if (cl.cinematicpalette_active)
@@ -175,7 +195,7 @@ void SCR_StopCinematic (void)
 	}
 	if (cin.hnodes1)
 	{
-		Z_Free (cin.hnodes1);
+		free (cin.hnodes1);
 		cin.hnodes1 = NULL;
 	}
 
@@ -252,7 +272,9 @@ void Huff1TableInit (void)
 	byte	counts[256];
 	int		numhnodes;
 
-	cin.hnodes1 = Z_Malloc (256*256*2*4);
+	cin.hnodes1 = malloc (256*256*2*4);
+	if (!cin.hnodes1)
+		Com_Error (ERR_DROP, "Huff1TableInit: not enough space for Huff1Table");
 	memset (cin.hnodes1, 0, 256*256*2*4);
 
 	for (prev=0 ; prev<256 ; prev++)
@@ -304,15 +326,16 @@ cblock_t Huff1Decompress (cblock_t in)
 	cblock_t	out;
 	int			inbyte;
 	int			*hnodes, *hnodesbase;
-//int		i;
+	int			i;
 
 	// get decompressed count
 	count = in.data[0] + (in.data[1]<<8) + (in.data[2]<<16) + (in.data[3]<<24);
 	input = in.data + 4;
-	out_p = out.data = Z_Malloc (count);
+	out_p = out.data = malloc (count);
+	if (!out_p)
+		Com_Error (ERR_DROP, "Huff1Decompress: not enough space for Huff1Decompress");
 
 	// read bits
-
 	hnodesbase = cin.hnodes1 - 256*2;	// nodes 0-255 aren't stored
 
 	hnodes = hnodesbase;
@@ -320,100 +343,25 @@ cblock_t Huff1Decompress (cblock_t in)
 	while (count)
 	{
 		inbyte = *input++;
-		//-----------
-		if (nodenum < 256)
+		for (i = 0; i < 8; i++)
 		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
+			if (nodenum < 256)
+			{
+				hnodes = hnodesbase + (nodenum << 9);
+				*out_p++ = nodenum;
+				if (!--count)
+					break;
+				nodenum = cin.numhnodes1[nodenum];
+			}
+
+			nodenum = hnodes[nodenum * 2 + (inbyte & 1)];
+			inbyte >>= 1;
 		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
-		//-----------
-		if (nodenum < 256)
-		{
-			hnodes = hnodesbase + (nodenum<<9);
-			*out_p++ = nodenum;
-			if (!--count)
-				break;
-			nodenum = cin.numhnodes1[nodenum];
-		}
-		nodenum = hnodes[nodenum*2 + (inbyte&1)];
-		inbyte >>=1;
 	}
 
 	if (input - in.data != in.count && input - in.data != in.count+1)
-	{
 		Com_Printf ("Decompression overread by %i", (input - in.data) - in.count);
-	}
+
 	out.count = out_p - out.data;
 
 	return out;
@@ -515,7 +463,7 @@ void SCR_RunCinematic (void)
 		cl.cinematictime = cls.realtime - cl.cinematicframe*1000/14;
 	}
 	if (cin.pic)
-		Z_Free (cin.pic);
+		free (cin.pic);
 	cin.pic = cin.pic_pending;
 	cin.pic_pending = NULL;
 	cin.pic_pending = SCR_ReadNextFrame ();
@@ -541,9 +489,7 @@ should be skipped
 qboolean SCR_DrawCinematic (void)
 {
 	if (cl.cinematictime <= 0)
-	{
 		return false;
-	}
 
 	if (cls.key_dest == key_menu)
 	{	// blank screen and pause if menu is up
@@ -588,6 +534,7 @@ void SCR_PlayCinematic (char *arg)
 	if (dot && !strcmp (dot, ".pcx"))
 	{	// static pcx image
 		Com_sprintf (name, sizeof(name), "pics/%s", arg);
+		palette = cl.cinematicpalette;
 		SCR_LoadPCX (name, &cin.pic, &palette, &cin.width, &cin.height);
 		cl.cinematicframe = -1;
 		cl.cinematictime = 1;
@@ -597,11 +544,6 @@ void SCR_PlayCinematic (char *arg)
 		{
 			Com_Printf ("%s not found.\n", name);
 			cl.cinematictime = 0;
-		}
-		else
-		{
-			memcpy (cl.cinematicpalette, palette, sizeof(cl.cinematicpalette));
-			Z_Free (palette);
 		}
 		return;
 	}

@@ -35,63 +35,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../qcommon/qcommon.h"
 
-//===============================================================================
-
-static byte *membase;
-static int  maxhunksize;
-static int  curhunksize;
-
-void *Hunk_Begin (int maxsize)
-{
-	// reserve a huge chunk of memory, but don't commit any yet
-	maxhunksize = maxsize;
-	curhunksize = 0;
-
-	membase = memalign(64, maxhunksize);
-	if (membase == NULL)
-		Sys_Error(ERR_FATAL, "unable to allocate %d bytes", maxsize);
-
-	// clear
-	memset(membase, 0, maxhunksize);
-
-	return membase;
-}
-
-void *Hunk_Alloc (int size)
-{
-	byte *buf;
-
-	// round to cacheline
-	size = (size+63)&~63;
-	if (curhunksize + size > maxhunksize)
-		Sys_Error(ERR_FATAL, "Hunk_Alloc overflow");
-
-	buf = membase + curhunksize;
-	curhunksize += size;
-
-	return buf;
-}
-
-int Hunk_End (void)
-{
-	byte *n;
-
-	n = realloc(membase, curhunksize);
-	if (n != membase)
-		Sys_Error(ERR_FATAL, "Hunk_End:  Could not remap virtual block (%d)", errno);
-
-	return curhunksize;
-}
-
-void Hunk_Free (void *base)
-{
-	if (base) 
-		free(base);
-}
-
-//===============================================================================
-
-
 /*
 ================
 Sys_Milliseconds

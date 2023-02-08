@@ -29,6 +29,8 @@ char	*com_argv[MAX_NUM_ARGVS+1];
 
 int		realtime;
 
+int		com_hunklevel = 0;
+
 jmp_buf abortframe;		// an ERR_DROP occured, exit the entire frame
 
 
@@ -1074,123 +1076,6 @@ void Info_Print (char *s)
 	}
 }
 
-
-/*
-==============================================================================
-
-						ZONE MEMORY ALLOCATION
-
-just cleared malloc with counters now...
-
-==============================================================================
-*/
-
-#define	Z_MAGIC		0x1d1d
-
-
-typedef struct zhead_s
-{
-	struct zhead_s	*prev, *next;
-	short	magic;
-	short	tag;			// for group free
-	int		size;
-} zhead_t;
-
-zhead_t		z_chain;
-int		z_count, z_bytes;
-
-/*
-========================
-Z_Free
-========================
-*/
-void Z_Free (void *ptr)
-{
-	zhead_t	*z;
-
-	z = ((zhead_t *)ptr) - 1;
-
-	if (z->magic != Z_MAGIC)
-		Com_Error (ERR_FATAL, "Z_Free: bad magic");
-
-	z->prev->next = z->next;
-	z->next->prev = z->prev;
-
-	z_count--;
-	z_bytes -= z->size;
-	free (z);
-}
-
-
-/*
-========================
-Z_Stats_f
-========================
-*/
-void Z_Stats_f (void)
-{
-	Com_Printf ("%i bytes in %i blocks\n", z_bytes, z_count);
-}
-
-/*
-========================
-Z_FreeTags
-========================
-*/
-void Z_FreeTags (int tag)
-{
-	zhead_t	*z, *next;
-
-	for (z=z_chain.next ; z != &z_chain ; z=next)
-	{
-		next = z->next;
-		if (z->tag == tag)
-			Z_Free ((void *)(z+1));
-	}
-}
-
-/*
-========================
-Z_TagMalloc
-========================
-*/
-void *Z_TagMalloc (int size, int tag)
-{
-	zhead_t	*z;
-	
-	size = size + sizeof(zhead_t);
-	z = malloc(size);
-	if (!z)
-		Com_Error (ERR_FATAL, "Z_Malloc: failed on allocation of %i bytes",size);
-	memset (z, 0, size);
-	z_count++;
-	z_bytes += size;
-	z->magic = Z_MAGIC;
-	z->tag = tag;
-	z->size = size;
-
-	z->next = z_chain.next;
-	z->prev = &z_chain;
-	z_chain.next->prev = z;
-	z_chain.next = z;
-
-	return (void *)(z+1);
-}
-
-/*
-========================
-Z_Malloc
-========================
-*/
-void *Z_Malloc (int size)
-{
-	return Z_TagMalloc (size, 0);
-}
-
-
-//============================================================================
-
-
 /*
 ====================
 COM_BlockSequenceCheckByte
@@ -1383,6 +1268,21 @@ void Com_Error_f (void)
 	Com_Error (ERR_FATAL, "%s", Cmd_Argv(1));
 }
 
+/*
+================
+Com_ClearMemory
+
+This clears all the memory used by both the client and server, but does
+not reinitialize anything.
+================
+*/
+void Com_ClearMemory (qboolean server)
+{
+	Com_Printf ("Clearing memory %s\n", server ? "(SERVER)" : "(CLIENT)");
+
+	if (com_hunklevel)
+		Hunk_FreeToLowMark (com_hunklevel);
+}
 
 /*
 =================
@@ -1396,11 +1296,11 @@ void Qcommon_Init (int argc, char **argv)
 	if (setjmp (abortframe) )
 		Sys_Error ("Error during initialization");
 
-	z_chain.next = z_chain.prev = &z_chain;
-
 	// prepare enough of the subsystems to handle
 	// cvar and command buffer management
 	COM_InitArgv (argc, argv);
+
+	Memory_Init (HUNKSIZE);
 
 	Swap_Init ();
 	Cbuf_Init ();
@@ -1428,7 +1328,6 @@ void Qcommon_Init (int argc, char **argv)
 	//
 	// init commands and vars
 	//
-    Cmd_AddCommand ("z_stats", Z_Stats_f);
     Cmd_AddCommand ("error", Com_Error_f);
 
 	host_speeds = Cvar_Get ("host_speeds", "0", 0);
@@ -1458,6 +1357,9 @@ void Qcommon_Init (int argc, char **argv)
 
 	SV_Init ();
 	CL_Init ();
+
+	Hunk_AllocName (0, "-COM_HUNKLEVEL-");
+	com_hunklevel = Hunk_LowMark ();
 
 	// add + commands from command line
 	if (!Cbuf_AddLateCommands ())
