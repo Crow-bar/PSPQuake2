@@ -1,6 +1,6 @@
 
 #include <stdio.h>
-#include "../linux/glob.h"
+#include "../psp/glob.h"
 
 /* Like glob_match, but match PATTERN against any final segment of TEXT.  */
 static int glob_match_after_star(char *pattern, char *text)
