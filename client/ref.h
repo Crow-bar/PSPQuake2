@@ -210,7 +210,7 @@ typedef struct
 
 	// gamedir will be the current directory that generated
 	// files should be stored to, ie: "f:\quake\id1"
-	const char	*(*FS_WriteDir) (int flags);
+	const char	*(*FS_GetWriteDir) (int flags);
 
 	qboolean	 (*FS_FileExists) (const char *filename, int flags);
 

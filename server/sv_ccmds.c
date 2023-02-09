@@ -155,13 +155,16 @@ Delete save/<XXX>/
 */
 void SV_WipeSavegame (char *savename)
 {
-	char	name[MAX_OSPATH];
-	int		len;
-	char	*s;
+	char		name[MAX_OSPATH];
+	int			len;
+	char		*s;
+	const char	*wdir;
 
 	Com_DPrintf("SV_WipeSaveGame(%s)\n", savename);
 
-	Com_sprintf (name, sizeof(name), "%s/", FS_WriteDir (FS_PATH_GAMEDIR));
+	wdir = FS_GetWriteDir (FS_PATH_GAMEDIR);
+
+	Com_sprintf (name, sizeof(name), "%s/", wdir);
 	len = strlen(name);
 
 	Com_sprintf (name, sizeof(name), "save/%s/server.ssv", savename);
@@ -169,7 +172,7 @@ void SV_WipeSavegame (char *savename)
 	Com_sprintf (name, sizeof(name), "save/%s/game.ssv", savename);
 	FS_FileRemove (name, FS_PATH_GAMEDIR);
 
-	Com_sprintf (name, sizeof(name), "%s/save/%s/*.sav", FS_WriteDir (FS_PATH_GAMEDIR), savename);
+	Com_sprintf (name, sizeof(name), "%s/save/%s/*.sav", wdir, savename);
 	s = Sys_FindFirst( name, 0, 0 );
 	while (s)
 	{
@@ -177,7 +180,7 @@ void SV_WipeSavegame (char *savename)
 		s = Sys_FindNext( 0, 0 );
 	}
 	Sys_FindClose ();
-	Com_sprintf (name, sizeof(name), "%s/save/%s/*.sv2", FS_WriteDir (FS_PATH_GAMEDIR), savename);
+	Com_sprintf (name, sizeof(name), "%s/save/%s/*.sv2", wdir, savename);
 	s = Sys_FindFirst(name, 0, 0 );
 	while (s)
 	{
@@ -217,11 +220,14 @@ SV_CopySaveGame
 */
 void SV_CopySaveGame (char *src, char *dst)
 {
-	char	name[MAX_OSPATH], name2[MAX_OSPATH];
-	int		l, len;
-	char	*found;
+	char		name[MAX_OSPATH], name2[MAX_OSPATH];
+	int			l, len;
+	char		*found;
+	const char	*wdir;
 
 	Com_DPrintf("SV_CopySaveGame(%s, %s)\n", src, dst);
+
+	wdir = FS_GetWriteDir (FS_PATH_GAMEDIR);
 
 	SV_WipeSavegame (dst);
 
@@ -234,9 +240,9 @@ void SV_CopySaveGame (char *src, char *dst)
 	Com_sprintf (name2, sizeof(name2), "save/%s/game.ssv", dst);
 	CopyFile(name, name2);
 
-	Com_sprintf (name, sizeof(name), "%s/save/%s/", FS_WriteDir (FS_PATH_GAMEDIR), src);
+	Com_sprintf (name, sizeof(name), "%s/save/%s/", wdir, src);
 	len = strlen(name);
-	Com_sprintf (name, sizeof(name), "%s/save/%s/*.sav", FS_WriteDir (FS_PATH_GAMEDIR), src);
+	Com_sprintf (name, sizeof(name), "%s/save/%s/*.sav", wdir, src);
 	found = Sys_FindFirst(name, 0, 0 );
 	while (found)
 	{
@@ -281,7 +287,7 @@ void SV_WriteLevelFile (void)
 	CM_WritePortalState (f);
 	FS_FClose (f);
 
-	Com_sprintf (name, sizeof(name), "%s/save/current/%s.sav", FS_WriteDir (FS_PATH_GAMEDIR), sv.name);
+	Com_sprintf (name, sizeof(name), "%s/save/current/%s.sav", FS_GetWriteDir (FS_PATH_GAMEDIR), sv.name);
 	ge->WriteLevel (name);
 }
 
@@ -309,7 +315,7 @@ void SV_ReadLevelFile (void)
 	CM_ReadPortalState (f);
 	FS_FClose (f);
 
-	Com_sprintf (name, sizeof(name), "%s/save/current/%s.sav", FS_WriteDir (FS_PATH_GAMEDIR), sv.name);
+	Com_sprintf (name, sizeof(name), "%s/save/current/%s.sav", FS_GetWriteDir (FS_PATH_GAMEDIR), sv.name);
 	ge->ReadLevel (name);
 }
 
@@ -382,7 +388,7 @@ void SV_WriteServerFile (qboolean autosave)
 	FS_FClose (f);
 
 	// write game state
-	Com_sprintf (name, sizeof(name), "%s/save/current/game.ssv", FS_WriteDir (FS_PATH_GAMEDIR));
+	Com_sprintf (name, sizeof(name), "%s/save/current/game.ssv", FS_GetWriteDir (FS_PATH_GAMEDIR));
 	ge->WriteGame (name, autosave);
 }
 
@@ -433,7 +439,7 @@ void SV_ReadServerFile (void)
 	strcpy (svs.mapcmd, mapcmd);
 
 	// read game state
-	Com_sprintf (name, sizeof(name), "%s/save/current/game.ssv", FS_WriteDir (FS_PATH_GAMEDIR));
+	Com_sprintf (name, sizeof(name), "%s/save/current/game.ssv", FS_GetWriteDir (FS_PATH_GAMEDIR));
 	ge->ReadGame (name);
 }
 

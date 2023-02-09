@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -20,6 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // q_shpsp.c
 
 #include <pspkernel.h>
+#include <pspiofilemgr.h>
 
 #include <sys/types.h>
 #include <errno.h>
@@ -58,7 +59,7 @@ int Sys_Milliseconds (void)
 
 void Sys_Mkdir (char *path)
 {
-    mkdir (path, 0777);
+	sceIoMkdir (path, 0777);
 }
 
 char *strlwr (char *s)
@@ -74,26 +75,18 @@ char *strlwr (char *s)
 static	char	findbase[MAX_OSPATH];
 static	char	findpath[MAX_OSPATH];
 static	char	findpattern[MAX_OSPATH];
-static	DIR		*fdir;
+static	SceUID	fdir = -1;
 
-static qboolean CompareAttributes(char *path, char *name,
-	unsigned musthave, unsigned canthave )
+static qboolean CompareAttributes (SceIoDirent *d, unsigned musthave, unsigned canthave)
 {
-	struct stat st;
-	char fn[MAX_OSPATH];
-
-// . and .. never match
-	if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0)
+	// . and .. never match
+	if (strcmp(d->d_name, ".") == 0 || strcmp(d->d_name, "..") == 0)
 		return false;
 
-	sprintf(fn, "%s/%s", path, name);
-	if (stat(fn, &st) == -1)
-		return false; // shouldn't happen
-
-	if ( ( st.st_mode & S_IFDIR ) && ( canthave & SFF_SUBDIR ) )
+	if (FIO_S_ISDIR(d->d_stat.st_mode) && (canthave & SFF_SUBDIR))
 		return false;
 
-	if ( ( musthave & SFF_SUBDIR ) && !( st.st_mode & S_IFDIR ) )
+	if ((musthave & SFF_SUBDIR) && !FIO_S_ISDIR(d->d_stat.st_mode))
 		return false;
 
 	return true;
@@ -101,15 +94,14 @@ static qboolean CompareAttributes(char *path, char *name,
 
 char *Sys_FindFirst (char *path, unsigned musthave, unsigned canhave)
 {
-	struct dirent *d;
+	SceIoDirent	d;
 	char *p;
 
-	if (fdir)
+	if (fdir >= 0)
 		Sys_Error ("Sys_BeginFind without close");
 
-//	COM_FilePath (path, findbase);
 	strcpy(findbase, path);
-	
+
 	if ((p = strrchr(findbase, '/')) != NULL) {
 		*p = 0;
 		strcpy(findpattern, p + 1);
@@ -118,46 +110,61 @@ char *Sys_FindFirst (char *path, unsigned musthave, unsigned canhave)
 
 	if (strcmp(findpattern, "*.*") == 0)
 		strcpy(findpattern, "*");
-	
-	if ((fdir = opendir(path)) == NULL)
+
+	fdir = sceIoDopen (path);
+	if (fdir < 0)
 		return NULL;
-	while ((d = readdir(fdir)) != NULL) {
-		if (!*findpattern || glob_match(findpattern, d->d_name)) {
-//			if (*findpattern)
-//				printf("%s matched %s\n", findpattern, d->d_name);
-			if (CompareAttributes(findbase, d->d_name, musthave, canhave)) {
-				sprintf (findpath, "%s/%s", findbase, d->d_name);
+
+	while (1)
+	{
+		memset (&d, 0, sizeof(SceIoDirent));
+		if(!sceIoDread (fdir, &d))
+			break;
+
+		if (!*findpattern || glob_match(findpattern, d.d_name))
+		{
+			if (CompareAttributes(&d, musthave, canhave))
+			{
+				sprintf (findpath, "%s/%s", findbase, d.d_name);
 				return findpath;
 			}
 		}
 	}
+
 	return NULL;
 }
 
 char *Sys_FindNext (unsigned musthave, unsigned canhave)
 {
-	struct dirent *d;
+	SceIoDirent	d;
 
-	if (fdir == NULL)
+	if (fdir < 0)
 		return NULL;
-	while ((d = readdir(fdir)) != NULL) {
-		if (!*findpattern || glob_match(findpattern, d->d_name)) {
-//			if (*findpattern)
-//				printf("%s matched %s\n", findpattern, d->d_name);
-			if (CompareAttributes(findbase, d->d_name, musthave, canhave)) {
-				sprintf (findpath, "%s/%s", findbase, d->d_name);
+
+	while (1)
+	{
+		memset (&d, 0, sizeof(SceIoDirent));
+		if(!sceIoDread (fdir, &d))
+			break;
+
+		if (!*findpattern || glob_match(findpattern, d.d_name))
+		{
+			if (CompareAttributes(&d, musthave, canhave))
+			{
+				sprintf (findpath, "%s/%s", findbase, d.d_name);
 				return findpath;
 			}
 		}
 	}
+
 	return NULL;
 }
 
 void Sys_FindClose (void)
 {
-	if (fdir != NULL)
-		closedir(fdir);
-	fdir = NULL;
+	if (fdir >= 0)
+		sceIoDclose (fdir);
+	fdir = -1;
 }
 
 

@@ -77,6 +77,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define BUILDSTRING "PSP"
 #define	CPUSTRING	"mips"
 
+#define PSP_FIO
+
 #else	// !WIN32
 
 #define BUILDSTRING "NON-WIN32"
@@ -729,7 +731,7 @@ byte		*FS_LoadFile (const char *path, size_t *size, int flags);
 void		FS_FreeFile (void *buffer);
 qboolean	FS_WriteFile(const char *path, const void *buffer, size_t len, int flags);
 
-const char	*FS_WriteDir (int flags);
+const char	*FS_GetWriteDir (int flags);
 void		FS_ExecAutoexec (void);
 void		FS_SetGamedir (char *dir);
 

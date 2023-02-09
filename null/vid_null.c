@@ -105,7 +105,7 @@ void	VID_Init (void)
     ri.FS_LoadFile = FS_LoadFile;
     ri.FS_FreeFile = FS_FreeFile;
     ri.FS_WriteFile = FS_WriteFile;
-    ri.FS_WriteDir = FS_WriteDir;
+    ri.FS_GetWriteDir = FS_GetWriteDir;
     ri.FS_FileExists = FS_FileExists;
     ri.Vid_NewWindow = VID_NewWindow;
     ri.Cvar_Get = Cvar_Get;

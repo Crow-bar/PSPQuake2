@@ -21,6 +21,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <sys/stat.h>
 #include <dirent.h>
 #include "qcommon.h"
+#ifdef PSP_FIO
+#include <pspiofilemgr.h>
+#endif
 
 // define this to dissalow any data but the demo pak file
 //#define	NO_ADDONS
@@ -51,7 +54,11 @@ QUAKE FILESYSTEM
 
 struct file_s
 {
+#ifdef PSP_FIO
+	SceUID	handle;
+#else
 	FILE	*handle;
+#endif
 	int		flags;
 	off_t	length;
 	off_t	position;
@@ -132,13 +139,20 @@ Look for a file in the filesystem only
 static qboolean RFS_FileExists (const char *filename)
 {
 	int			result;
+#ifdef PSP_FIO
+	SceIoStat	buf;
+	result = sceIoGetstat (filename, &buf);
+	if (result < 0)
+		return false;
+	return FIO_S_ISREG(buf.st_mode);
+#else
 	struct stat	buf;
-
-	result = stat(filename, &buf);
+	result = stat (filename, &buf);
 	if(result < 0)
 		return false;
 
 	return S_ISREG(buf.st_mode);
+#endif
 }
 
 /*
@@ -159,7 +173,7 @@ static filelink_t *FS_FindLink(const char *oldpath, char *newpath, size_t nlengt
 	filelink_t	*link;
 	size_t		olength;
 
-	olength = strlen(oldpath);
+	olength = strlen (oldpath);
 
 	for (link = fs_links; link; link = link->next)
 	{
@@ -226,7 +240,7 @@ static searchpath_t *FS_FindFile(const char *filename, int *index, int flags)
 			// check a file in the directory tree
 			Com_sprintf (netpath, sizeof(netpath), "%s/%s", search->filename, filename);
 
-			if(RFS_FileExists(netpath))
+			if(RFS_FileExists (netpath))
 			{
 				Com_DPrintf ("FS_FindFile: %s\n", netpath);
 				return search;
@@ -245,7 +259,7 @@ Look for a file in the real filesystem and in the paks
 */
 qboolean FS_FileExists(const char *filename, int flags)
 {
-	if(FS_FindFile(filename, NULL, flags))
+	if(FS_FindFile (filename, NULL, flags))
 		return true;
 	return false;
 }
@@ -264,9 +278,13 @@ qboolean FS_FileRemove (const char *filename, int flags)
 	if(!filename || !*filename)
 		return false;
 
-	Com_sprintf (path, sizeof(path), "%s/%s", FS_WriteDir(flags), filename);
+	Com_sprintf (path, sizeof(path), "%s/%s", FS_GetWriteDir(flags), filename);
 
-	return (remove(path) == 0) ? true : false;
+#ifdef PSP_FIO
+	return (sceIoRemove (path) == 0);
+#else
+	return (remove (path) == 0);
+#endif
 }
 
 /*
@@ -285,12 +303,16 @@ qboolean FS_FileRename (const char *oldname, const char *newname, int flags)
 	if( !oldname || !newname || !*oldname || !*newname )
 		return false;
 
-	wpath = FS_WriteDir(flags);
+	wpath = FS_GetWriteDir(flags);
 
 	Com_sprintf (oldpath, sizeof(oldpath), "%s/%s", wpath, oldname);
 	Com_sprintf (newpath, sizeof(newpath), "%s/%s", wpath, newname);
 
-	return (rename(oldpath, newpath) == 0);
+#ifdef PSP_FIO
+	return (sceIoRename (oldpath, newpath) == 0);
+#else
+	return (rename (oldpath, newpath) == 0);
+#endif
 }
 
 /*
@@ -370,7 +392,11 @@ file_t *FS_FOpen (const char *filename, int flags)
 	searchpath_t	*search;
 	char			netpath[MAX_OSPATH];
 	char			linkpath[MAX_OSPATH];
+#ifdef PSP_FIO
+	int				mode;
+#else
 	char			mode[5];
+#endif
 	pack_t			*pak;
 	int				index;
 
@@ -385,6 +411,27 @@ file_t *FS_FOpen (const char *filename, int flags)
 	if(FS_FindLink(filename, linkpath, sizeof(linkpath)))
 		filename = linkpath;
 
+#ifdef PSP_FIO
+	mode = 0;
+
+	switch(flags & FS_MODE_MASK)
+	{
+	case FS_MODE_APPEND:
+		mode = PSP_O_WRONLY | PSP_O_CREAT | PSP_O_APPEND;
+		break;
+	case FS_MODE_READ:
+		mode = PSP_O_RDONLY;
+		break;
+	case FS_MODE_WRITE:
+		mode = PSP_O_WRONLY | PSP_O_CREAT | PSP_O_TRUNC;
+		break;
+	case FS_MODE_RW:
+		mode = PSP_O_RDWR;
+		break;
+	default:
+		return NULL;
+	}
+#else
 	memset(mode, 0, sizeof(mode));
 
 	switch(flags & FS_MODE_MASK)
@@ -407,6 +454,7 @@ file_t *FS_FOpen (const char *filename, int flags)
 
 	if(!(flags & FS_FLAG_TEXT))
 		strcat(mode, "b");
+#endif
 
 	file->flags = flags;
 
@@ -423,11 +471,19 @@ file_t *FS_FOpen (const char *filename, int flags)
 			{
 				pak = search->pack;
 
+#ifdef PSP_FIO
+				file->handle = sceIoOpen (pak->filename, PSP_O_RDONLY, 0);
+				if(file->handle < 0)
+					Com_Error (ERR_FATAL, "FS_FOpen: can't open pak file %s", pak->filename);
+
+				sceIoLseek( file->handle, pak->files[index].filepos, PSP_SEEK_SET );
+#else
 				file->handle = fopen (pak->filename, "rb");
 				if (!file->handle)
 					Com_Error (ERR_FATAL, "FS_FOpen: can't open pak file %s", pak->filename);
 
 				fseek (file->handle, pak->files[index].filepos, SEEK_SET);
+#endif
 
 				file->offset = pak->files[index].filepos;
 				file->length = pak->files[index].filelen;
@@ -436,6 +492,17 @@ file_t *FS_FOpen (const char *filename, int flags)
 			{
 				Com_sprintf (netpath, sizeof(netpath), "%s/%s", search->filename, filename);
 
+#ifdef PSP_FIO
+				file->handle = sceIoOpen (netpath, mode, 0);
+				if (file->handle < 0)
+				{
+					Z_Free(file);
+					return NULL;
+				}
+
+				file->length = sceIoLseek(file->handle, 0, PSP_SEEK_END);
+				sceIoLseek(file->handle, 0, PSP_SEEK_SET);
+#else
 				file->handle = fopen (netpath, mode);
 				if (!file->handle)
 				{
@@ -446,6 +513,7 @@ file_t *FS_FOpen (const char *filename, int flags)
 				fseek (file->handle, 0, SEEK_END);
 				file->length = ftell (file->handle);
 				fseek (file->handle, 0, SEEK_SET);
+#endif
 			}
 			return file;
 		}
@@ -454,9 +522,23 @@ file_t *FS_FOpen (const char *filename, int flags)
 	{
 		file->flags |= FS_TYPE_RFS; // hardcoded
 
-		Com_sprintf (netpath, sizeof(netpath), "%s/%s", FS_WriteDir(flags), filename);
+		Com_sprintf (netpath, sizeof(netpath), "%s/%s", FS_GetWriteDir(flags), filename);
 		FS_CreatePath (netpath);
 
+#ifdef PSP_FIO
+		file->handle = sceIoOpen (netpath, mode, 0666);
+		if (file->handle < 0)
+		{
+			Z_Free(file);
+			return NULL;
+		}
+
+		file->length = sceIoLseek(file->handle, 0, PSP_SEEK_END);
+		if((flags & FS_MODE_MASK) == FS_MODE_APPEND)
+			file->position = file->length;
+		else
+			sceIoLseek(file->handle, 0, PSP_SEEK_SET);
+#else
 		file->handle = fopen (netpath, mode);
 		if (!file->handle)
 		{
@@ -470,6 +552,7 @@ file_t *FS_FOpen (const char *filename, int flags)
 			file->position = file->length;
 		else
 			fseek (file->handle, 0, SEEK_SET);
+#endif
 
 		return file;
 	}
@@ -557,7 +640,11 @@ off_t FS_FRead (file_t *file, const void *buffer, size_t size)
 		if(readlenght > remaining)
 			readlenght = remaining;
 
+#ifdef PSP_FIO
+		readresult = sceIoRead (file->handle, &buf[completed], readlenght);
+#else
 		readresult = (off_t)fread(&buf[completed], 1, readlenght, file->handle);
+#endif
 
 		completed += readresult;
 		file->position += readresult;
@@ -571,7 +658,11 @@ off_t FS_FRead (file_t *file, const void *buffer, size_t size)
 		if(readlenght > FS_BUFFER_SIZE)
 			readlenght = FS_BUFFER_SIZE;
 
+#ifdef PSP_FIO
+		readresult = sceIoRead (file->handle, file->buffer.ptr, readlenght);
+#else
 		readresult = (off_t)fread(file->buffer.ptr, 1, readlenght, file->handle);
+#endif
 
 		if(readresult > 0)
 		{
@@ -616,7 +707,11 @@ off_t FS_FWrite (file_t *file, const void *buffer, size_t size)
 	if(file->buffer.position != file->buffer.length)
 	{
 		file->position += file->buffer.position - file->buffer.length;
+#ifdef PSP_FIO
+		sceIoLseek(file->handle, file->position, PSP_SEEK_SET);
+#else
 		fseek(file->handle, file->position, SEEK_SET);
+#endif
 	}
 
 	// cache invalidation
@@ -624,7 +719,11 @@ off_t FS_FWrite (file_t *file, const void *buffer, size_t size)
 	file->buffer.length = 0;
 
 	// write
+#ifdef PSP_FIO
+	completed = sceIoWrite (file->handle, buffer, size);
+#else
 	completed = (off_t)fwrite(buffer, 1, size, file->handle);
+#endif
 	if(completed > 0)
 	{
 		file->position += completed;
@@ -633,8 +732,10 @@ off_t FS_FWrite (file_t *file, const void *buffer, size_t size)
 			file->length = file->position;
 	}
 
+#ifndef PSP_FIO
 	if(file->flags & FS_FLAG_FLUSH)
 		fflush(file->handle);
+#endif
 
 	return completed;
 }
@@ -705,8 +806,13 @@ int FS_FSeek (file_t *file, off_t offset, int whence)
 	if(file->position == offset)
 		return 0;
 
+#ifdef PSP_FIO
+	if(sceIoLseek(file->handle, file->offset + offset, PSP_SEEK_SET) < 0)
+		return -1;
+#else
 	if(fseek(file->handle, file->offset + offset, SEEK_SET) != 0)
 		return -1;
+#endif
 
 	file->position = offset;
 
@@ -785,8 +891,13 @@ void FS_FClose (file_t *file)
 	if(!file)
 		return;
 
+#ifdef PSP_FIO
+	if(file->handle >= 0)
+		sceIoClose (file->handle);
+#else
 	if(file->handle)
 		fclose (file->handle);
+#endif
 
 	Z_Free(file);
 }
@@ -903,14 +1014,28 @@ pack_t *FS_LoadPackFile (char *packfile)
 	dpackfile_t		*packfiles;
 	int				numpackfiles;
 	pack_t			*pack;
+#ifdef PSP_FIO
+	SceUID			packhandle;
+#else
 	FILE			*packhandle;
+#endif
 	unsigned		checksum;
 
+#ifdef PSP_FIO
+	packhandle = sceIoOpen(packfile, PSP_O_RDONLY, 0);
+	if (packhandle < 0)
+		return NULL;
+#else
 	packhandle = fopen(packfile, "rb");
 	if (!packhandle)
 		return NULL;
+#endif
 
+#ifdef PSP_FIO
+	sceIoRead (packhandle, (void *)&header, sizeof(header));
+#else
 	fread (&header, 1, sizeof(header), packhandle);
+#endif
 	if (LittleLong(header.ident) != IDPAKHEADER)
 		Com_Error (ERR_FATAL, "%s is not a packfile", packfile);
 
@@ -922,10 +1047,15 @@ pack_t *FS_LoadPackFile (char *packfile)
 	if (numpackfiles > MAX_FILES_IN_PACK)
 		Com_Error (ERR_FATAL, "%s has %i files", packfile, numpackfiles);
 
-	packfiles = Hunk_AllocName (numpackfiles * sizeof(dpackfile_t), "packfile");
+	packfiles = Hunk_AllocName (header.dirlen, "packfile");
 
+#ifdef PSP_FIO
+	sceIoLseek (packhandle, header.dirofs, PSP_SEEK_SET);
+	sceIoRead (packhandle, (void *)packfiles, header.dirlen);
+#else
 	fseek (packhandle, header.dirofs, SEEK_SET);
 	fread (packfiles, numpackfiles, sizeof(dpackfile_t), packhandle);
+#endif
 
 #ifdef NO_ADDONS
 // crc the directory to check for modifications
@@ -947,7 +1077,11 @@ pack_t *FS_LoadPackFile (char *packfile)
 	pack->numfiles = numpackfiles;
 	pack->files = packfiles;
 
+#ifdef PSP_FIO
+	sceIoClose (packhandle);
+#else
 	fclose(packhandle);
+#endif
 
 	Com_Printf ("Added packfile %s (%i files)\n", packfile, numpackfiles);
 	return pack;
@@ -1003,12 +1137,12 @@ void FS_AddGameDirectory (char *dir, int flags)
 
 /*
 ==================
-FS_WriteDir
+FS_GetWriteDir
 
 Called to find where to write a file (demos, savegames, etc)
 ==================
 */
-const char *FS_WriteDir(int flags)
+const char *FS_GetWriteDir(int flags)
 {
 	if(flags & FS_PATH_ROOTDIR)
 		return fs_rootdir;
@@ -1313,18 +1447,17 @@ void FS_InitFilesystem (void)
 	Cmd_AddCommand ("dir", FS_Dir_f );
 
 	// allows the game to run from outside the data tree
-	fs_rootdirvar      = Cvar_Get ("rootdir",  ".",    CVAR_NOSET);
+	fs_rootdirvar      = Cvar_Get ("rootdir",   "",     CVAR_NOSET);
 	// Logically concatenates the custom dir after the basedir for
 	// allows the game to run from outside the data tree
 	fs_customdirvar    = Cvar_Get ("customdir",	"",     CVAR_NOSET);
 	// game override
-	fs_gamedirvar      = Cvar_Get ("game",     "",     CVAR_LATCH | CVAR_SERVERINFO);
+	fs_gamedirvar      = Cvar_Get ("game",      "",     CVAR_LATCH | CVAR_SERVERINFO);
 
 	// set root dir
-	if (fs_rootdirvar->string[0])
-		strcpy (fs_rootdir, fs_rootdirvar->string);
-	else
-		strcpy (fs_rootdir, ".");
+	if (!fs_rootdirvar->string[0])
+		Cvar_FullSet ("rootdir", ".", CVAR_NOSET);
+	strcpy (fs_rootdir, fs_rootdirvar->string);
 
 	if (fs_customdirvar->string[0])
 		FS_AddGameDirectory (va("%s/%s", fs_rootdir, fs_customdirvar->string), FS_PATH_CUSTOMDIR);
