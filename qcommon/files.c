@@ -1160,10 +1160,9 @@ FS_ExecAutoexec
 */
 void FS_ExecAutoexec (void)
 {
-	char *dir;
-	char name [MAX_QPATH];
+	char name[MAX_QPATH];
 
-	Com_sprintf(name, sizeof(name), "%s/%s/autoexec.cfg", fs_gamedir, dir);
+	Com_sprintf(name, sizeof(name), "%s/autoexec.cfg", fs_gamedir);
 	if (Sys_FindFirst(name, 0, SFF_SUBDIR | SFF_HIDDEN | SFF_SYSTEM))
 		Cbuf_AddText ("exec autoexec.cfg\n");
 	Sys_FindClose();
