@@ -599,8 +599,10 @@ void CL_ClearState (void)
 		re.ClearRegistered ();
 
 	if(!Com_ServerState ())
+	{
+		CM_ClearMap ();
 		Com_ClearMemory (false);
-
+	}
 // wipe the entire cl structure
 	memset (&cl, 0, sizeof(cl));
 	memset (&cl_entities, 0, sizeof(cl_entities));
@@ -1349,15 +1351,12 @@ void CL_RequestNextDownload (void)
 
 	// confirm existance of textures, download any that don't exist
 	if (precache_check == TEXTURE_CNT+1) {
-		// from qcommon/cmodel.c
-		extern int			numtexinfo;
-		extern mapsurface_t	map_surfaces[];
-
+		mapsurface_t	*msurf = CM_MapSurfaces ();
 		if (allow_download->value && allow_download_maps->value) {
-			while (precache_tex < numtexinfo) {
+			while (precache_tex < CM_NumTexInfo ()) {
 				char fn[MAX_OSPATH];
 
-				sprintf(fn, "textures/%s.wal", map_surfaces[precache_tex++].rname);
+				sprintf(fn, "textures/%s.wal", msurf[precache_tex++].rname);
 				if (!CL_CheckOrDownloadFile(fn))
 					return; // started a download
 			}

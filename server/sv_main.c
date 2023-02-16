@@ -1047,6 +1047,7 @@ void SV_Shutdown (char *finalmsg, qboolean reconnect)
 	if (svs.demofile)
 		FS_FClose (svs.demofile);
 
+	CM_ClearMap ();
 	Com_ClearMemory (true);
 
 	memset (&svs, 0, sizeof(svs));

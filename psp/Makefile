@@ -3,6 +3,10 @@ ifeq ($(PSPSDK),)
 $(error PSPSDK wasn't set)
 endif
 
+DEBUG := 0
+REF := soft
+GAME := base
+
 TARGET           = $(BUILDDIR)/PSPQuake2
 EXTRA_TARGETS    = $(BUILDDIR)/EBOOT.PBP
 
@@ -15,6 +19,8 @@ PSP_EBOOT        = $(BUILDDIR)/EBOOT.PBP
 BUILD_PRX        = 1
 PSP_LARGE_MEMORY = 0
 PSP_FW_VERSION   = 660
+
+PSP_BASE_ADDR    = 0x08804000
 
 
 #############################################################################
@@ -52,40 +58,32 @@ LIBS = -lm -lpspdmac -lpspaudio
 #############################################################################
 # SETUP AND BUILD
 #############################################################################
+VALID_REF = soft gu
+VALID_GAMES = base ctf xatrix
 
+ifeq ($(DEBUG), 1)
 BUILDDIR = $(BUILD_DEBUG_DIR)
 CFLAGS = $(RELEASE_CFLAGS)
+EXTRA_TARGETS += $(TARGET).sym
+else
+BUILDDIR = $(BUILD_RELEASE_DIR)
+CFLAGS = $(RELEASE_CFLAGS)
+endif
+
+ifeq (,$(filter $(REF),$(VALID_REF)))
+$(error Invalid render - [$(REF)]! Supported - [$(VALID_REF)])
+endif
+
+ifeq (,$(filter $(GAME),$(VALID_GAMES)))
+$(error Invalid game - [$(GAME)]! Supported - [$(VALID_GAMES)])
+endif
 
 OBJS = \
 	$(BUILDDIR)/quake2.o \
-	$(BUILDDIR)/ref_soft.o \
-	$(BUILDDIR)/game.o
+	$(BUILDDIR)/ref_$(REF).o \
+	$(BUILDDIR)/$(GAME).o
 
 all: $(OBJS)
-
-#build_debug:
-#	@-mkdir $(BUILD_DEBUG_DIR) \
-#		$(BUILD_DEBUG_DIR)/client \
-#		$(BUILD_DEBUG_DIR)/ref_soft \
-#		$(BUILD_DEBUG_DIR)/ref_gl \
-#		$(BUILD_DEBUG_DIR)/game \
-#		$(BUILD_DEBUG_DIR)/ctf \
-#		$(BUILD_DEBUG_DIR)/xatrix
-#	$(MAKE) targets BUILDDIR=$(BUILD_DEBUG_DIR) CFLAGS="$(DEBUG_CFLAGS)"
-
-#build_release:
-#	@-mkdir $(BUILD_RELEASE_DIR) \
-#		$(BUILD_RELEASE_DIR)/client \
-#		$(BUILD_RELEASE_DIR)/ref_soft \
-#		$(BUILD_RELEASE_DIR)/ref_gl \
-#		$(BUILD_RELEASE_DIR)/game \
-#		$(BUILD_RELEASE_DIR)/ctf \
-#		$(BUILD_RELEASE_DIR)/xatrix
-#	$(MAKE) targets BUILDDIR=$(BUILD_RELEASE_DIR) CFLAGS="$(RELEASE_CFLAGS)"
-
-#all: build_debug build_release
-
-#targets: $(TARGETS)
 
 #############################################################################
 # CLIENT/SERVER
@@ -207,7 +205,7 @@ GAME_OBJS = \
 #	$(GAME_DIR)/q_shared.o \
 #	$(GAME_DIR)/m_flash.o
 
-$(BUILDDIR)/game.o: $(GAME_OBJS)
+$(BUILDDIR)/base.o: $(GAME_OBJS)
 	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
 	@$(LD) -r -o $@ $(GAME_OBJS)
 
@@ -244,7 +242,7 @@ CTF_OBJS = \
 	$(CTF_DIR)/p_weapon.o
 #	$(CTF_DIR)/q_shared.o
 
-$(BUILDDIR)/ctf/game.o: $(CTF_OBJS)
+$(BUILDDIR)/ctf.o: $(CTF_OBJS)
 	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
 	@$(LD) -r -o $@ $(CTF_OBJS)
 
@@ -306,7 +304,7 @@ XATRIX_OBJS = \
 	$(XATRIX_DIR)/p_weapon.o
 #	$(XATRIX_DIR)/q_shared.o
 
-$(BUILDDIR)/xatrix/game.o: $(XATRIX_OBJS)
+$(BUILDDIR)/xatrix.o: $(XATRIX_OBJS)
 	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
 	@$(LD) -r -o $@ $(XATRIX_OBJS)
 
@@ -363,17 +361,16 @@ $(BUILDDIR)/ref_gu.o: $(REF_GU_OBJS)
 # MISC
 #############################################################################
 
-clean: clean-debug clean-release
+clean-all: clean-debug clean-release
 
 clean-debug:
-	$(MAKE) clean2 BUILDDIR=$(BUILD_DEBUG_DIR) CFLAGS="$(DEBUG_CFLAGS)"
+	$(MAKE) clean2 DEBUG=1
 
 clean-release:
-	$(MAKE) clean2 BUILDDIR=$(BUILD_RELEASE_DIR) CFLAGS="$(DEBUG_CFLAGS)"
+	$(MAKE) clean2 DEBUG=0
 
-clean2:
+clean2: clean
 	-rm -f \
-	$(TARGETS) \
 	$(QUAKE2_OBJS) \
 	$(GAME_OBJS) \
 	$(CTF_OBJS) \
@@ -392,6 +389,10 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	@echo "\033[38;5;142m"$(notdir $<)"\033[0m"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.sym: $(TARGET).elf
+	@echo "\033[38;5;140mBuilding "$(notdir $@)"\033[0m"
+	@readelf -sW $< | grep GLOBAL | gawk --non-decimal-data '{ printf("%08x %s,0008\n", ("0x"$$2)+$(PSP_BASE_ADDR), $$8) }' | grep -v '^_' > $@
 
 PSPSDK=$(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak

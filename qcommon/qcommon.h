@@ -641,8 +641,12 @@ CMODEL
 #include "../qcommon/qfiles.h"
 
 cmodel_t	*CM_LoadMap (char *name, qboolean clientload, unsigned *checksum);
+qboolean	CM_ClientReady (void);
+void		CM_ClearMap (void);
 cmodel_t	*CM_InlineModel (char *name);	// *1, *2, etc
 
+int			CM_NumTexInfo (void);
+mapsurface_t	*CM_MapSurfaces (void);
 int			CM_NumClusters (void);
 int			CM_NumInlineModels (void);
 char		*CM_EntityString (void);

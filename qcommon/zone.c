@@ -22,7 +22,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qcommon.h"
 #include <malloc.h>
 
-#define	DYNAMIC_SIZE	0x100000	// 1MB
+#define	DYNAMIC_SIZE	0x180000	// 1.5MB
 
 #define	ZONEID	0x1d4a11
 #define MINFRAGMENT	64
