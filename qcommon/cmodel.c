@@ -603,7 +603,7 @@ cmodel_t *CM_LoadMap (char *name, qboolean clientload, unsigned *checksum)
 	//
 	// load the file
 	//
-	buf = (unsigned *)FS_LoadFile (name, &length, FS_PATH_ALL | FS_FLAG_TEMP);
+	buf = (unsigned *)FS_LoadFile (name, &length, FS_PATH_ALL | FS_FLAG_MTEMP);
 	if (!buf)
 		Com_Error (ERR_DROP, "Couldn't load %s", name);
 

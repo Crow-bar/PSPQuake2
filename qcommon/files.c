@@ -19,6 +19,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 
 #include <sys/stat.h>
+#include <malloc.h>
 #include <dirent.h>
 #include "qcommon.h"
 #ifdef PSP_FIO
@@ -928,20 +929,28 @@ byte *FS_LoadFile (const char *path, size_t *size, int flags)
 			buffersize++;
 
 #if 0
-		if(flags & FS_FLAG_HUNK)
-			Com_DPrintf("FS_LoadFile: Hunk_AllocName (%i, %s)\n", buffersize, path);
-		else if(flags & FS_FLAG_TEMP)
-			Com_DPrintf("FS_LoadFile: Hunk_TempAlloc (%i, %s)\n", buffersize, path);
+		Com_DPrintf ("FS_LoadFile:");
+
+		if(flags & FS_FLAG_MHUNK)
+			Com_DPrintf (" Hunk_AllocName");
+		else if(flags & FS_FLAG_MTEMP)
+			Com_DPrintf (" Hunk_TempAlloc");
+		else if (flags & FS_FLAG_MLC)
+			Com_DPrintf (" memalign");
 		else
-			Com_DPrintf("FS_LoadFile: Z_Malloc (%i, %s)\n", buffersize, path);
+			Com_DPrintf (" Z_Malloc");
+
+		Com_DPrintf (" (%i, %s)\n", buffersize, path);
 #endif
 
-		if(flags & FS_FLAG_HUNK)
-			buffer = Hunk_AllocName(buffersize, path);
-		else if(flags & FS_FLAG_TEMP)
-			buffer = Hunk_TempAlloc(buffersize);
+		if (flags & FS_FLAG_MHUNK)
+			buffer = Hunk_AllocName (buffersize, path);
+		else if (flags & FS_FLAG_MTEMP)
+			buffer = Hunk_TempAlloc (buffersize);
+		else if (flags & FS_FLAG_MLC)
+			buffer = memalign (16, buffersize);
 		else
-			buffer = Z_Malloc(buffersize);
+			buffer = Z_Malloc (buffersize);
 
 		if (!buffer)
 			Com_Error (ERR_FATAL, "FS_LoadFile: not enough space for %s", path);

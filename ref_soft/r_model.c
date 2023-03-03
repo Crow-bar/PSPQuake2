@@ -181,7 +181,7 @@ model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 	//
 	// load the file
 	//
-	buf = ri.FS_LoadFile (mod->name, &modfilelen, FS_PATH_ALL | FS_FLAG_TEMP);
+	buf = ri.FS_LoadFile (mod->name, &modfilelen, FS_PATH_ALL | FS_FLAG_MTEMP);
 	if (!buf)
 	{
 		if (crash)

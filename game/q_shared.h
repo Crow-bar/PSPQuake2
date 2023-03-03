@@ -51,6 +51,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define idaxp	0
 #endif
 
+typedef unsigned int		uint;
+typedef unsigned short		ushort;
 typedef unsigned char 		byte;
 typedef enum {false, true}	qboolean;
 
@@ -140,6 +142,9 @@ struct cplane_s;
 
 extern vec3_t vec3_origin;
 
+#define Q_min(a, b)	(((a) < (b)) ? (a) : (b))
+#define Q_max(a, b)	(((a) > (b)) ? (a) : (b))
+
 #define	nanmask (255<<23)
 
 #define	IS_NAN(x) (((*(int *)&x)&nanmask)==nanmask)
@@ -147,7 +152,7 @@ extern vec3_t vec3_origin;
 // microsoft's fabs seems to be ungodly slow...
 //float Q_fabs (float f);
 //#define	fabs(f) Q_fabs(f)
-#if !defined C_ONLY && !defined __linux__ && !defined __sgi
+#if !defined C_ONLY && !defined __linux__ && !defined __sgi && !defined __psp__
 extern long Q_ftol( float f );
 #else
 #define Q_ftol( f ) ( long ) (f)
@@ -326,10 +331,11 @@ typedef struct file_s	file_t;
 
 #define FS_FLAG_TEXT        0x00001000
 #define FS_FLAG_FLUSH       0x00002000
-#define FS_FLAG_HUNK        0x00004000
-#define FS_FLAG_TEMP        0x00008000
-#define FS_FLAG_NTER        0x00010000
-#define FS_FLAG_MASK        0x000ff000
+#define FS_FLAG_MHUNK       0x00004000
+#define FS_FLAG_MTEMP       0x00008000
+#define FS_FLAG_MLC         0x00010000
+#define FS_FLAG_NTER        0x00020000
+#define FS_FLAG_MASK        0x0003f000
 
 // seek mode
 #define FS_SEEK_SET         0

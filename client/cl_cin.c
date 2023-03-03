@@ -81,7 +81,7 @@ void SCR_LoadPCX (char *filename, byte **pic, byte **palette, int *width, int *h
 	// load the file
 	//
 	lowmark = Hunk_LowMark();
-	raw = FS_LoadFile (filename, &len, FS_PATH_ALL | FS_FLAG_HUNK);
+	raw = FS_LoadFile (filename, &len, FS_PATH_ALL | FS_FLAG_MHUNK);
 	if (!raw)
 		return;	// Com_Printf ("Bad pcx file %s\n", filename);
 

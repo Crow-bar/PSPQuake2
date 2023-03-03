@@ -380,7 +380,7 @@ void Cmd_Exec_f (void)
 	}
 
 	mark = Hunk_LowMark ();
-	f = (char *)FS_LoadFile (Cmd_Argv(1), NULL, FS_PATH_ALL | FS_FLAG_HUNK | FS_FLAG_NTER);
+	f = (char *)FS_LoadFile (Cmd_Argv(1), NULL, FS_PATH_ALL | FS_FLAG_MHUNK | FS_FLAG_NTER);
 	if (!f)
 	{
 		Com_Printf ("couldn't exec %s\n",Cmd_Argv(1));

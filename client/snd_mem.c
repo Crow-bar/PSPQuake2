@@ -128,7 +128,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 
 //	Com_Printf ("loading %s\n",namebuffer);
 
-	data = FS_LoadFile (namebuffer, &size, FS_PATH_ALL | FS_FLAG_TEMP);
+	data = FS_LoadFile (namebuffer, &size, FS_PATH_ALL | FS_FLAG_MTEMP);
 
 	if (!data)
 	{
