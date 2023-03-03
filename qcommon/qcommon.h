@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifndef HUNKSIZE
 #ifdef __psp__
-#define HUNKSIZE	0xa00000	// 10MB
+#define HUNKSIZE	0xb00000	// 11MB
 #else
 #define HUNKSIZE	0x2000000	// 32MB
 #endif

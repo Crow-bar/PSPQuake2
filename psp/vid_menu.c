@@ -77,7 +77,7 @@ static void BrightnessCallback( void *s )
 	else
 		s_brightness_slider[SW_MENU].curvalue = s_brightness_slider[HW_MENU].curvalue;
 
-	if ( stricmp( vid_ref->string, "soft" ) == 0 )
+	if ( !stricmp( vid_ref->string, "soft" ) || !stricmp( vid_ref->string, "gu" ) )
 	{
 		float gamma = ( 0.8 - ( slider->curvalue/10.0 - 0.5 ) ) + 0.5;
 

@@ -53,7 +53,7 @@ DEBUG_CFLAGS=$(BASE_CFLAGS) -g
 
 #LDFLAGS = -lm
 
-LIBS = -lm -lpspdmac -lpspaudio
+LIBS = -lpspgum_vfpu -lpspvfpu -lpspgu -lpspdmac -lpspaudio -lm
 
 #############################################################################
 # SETUP AND BUILD
@@ -133,7 +133,6 @@ QUAKE2_OBJS = \
 	\
 	$(PSP_DIR)/sys_psp.o \
 	$(PSP_DIR)/in_psp.o \
-	$(PSP_DIR)/swimp_psp.o \
 	$(PSP_DIR)/vid_psp.o \
 	$(PSP_DIR)/vid_menu.o \
 	$(PSP_DIR)/snd_psp.o \
@@ -314,6 +313,7 @@ $(BUILDDIR)/xatrix.o: $(XATRIX_OBJS)
 #############################################################################
 
 REF_SOFT_OBJS = \
+	$(PSP_DIR)/swimp_psp.o \
 	$(REF_SOFT_DIR)/r_aclip.o \
 	$(REF_SOFT_DIR)/r_alias.o \
 	$(REF_SOFT_DIR)/r_bsp.o \
@@ -342,6 +342,10 @@ $(BUILDDIR)/ref_soft.o: $(REF_SOFT_OBJS)
 #############################################################################
 
 REF_GU_OBJS = \
+	$(REF_GU_DIR)/gu_render.o \
+	$(REF_GU_DIR)/gu_vram.o \
+	$(REF_GU_DIR)/gu_extension.o \
+	$(REF_GU_DIR)/gu_clipping.o \
 	$(REF_GU_DIR)/gu_draw.o \
 	$(REF_GU_DIR)/gu_image.o \
 	$(REF_GU_DIR)/gu_light.o \
