@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -32,7 +32,7 @@ SV_FindIndex
 int SV_FindIndex (char *name, int start, int max, qboolean create)
 {
 	int		i;
-	
+
 	if (!name || !name[0])
 		return 0;
 
@@ -89,7 +89,7 @@ baseline will be transmitted
 void SV_CreateBaseline (void)
 {
 	edict_t			*svent;
-	int				entnum;	
+	int				entnum;
 
 	for (entnum = 1; entnum < ge->num_edicts ; entnum++)
 	{
@@ -214,7 +214,7 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 	}
 
 	sv.time = 1000;
-	
+
 	strcpy (sv.name, server);
 	strcpy (sv.configstrings[CS_NAME], server);
 
@@ -235,7 +235,7 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 	// clear physics interaction links
 	//
 	SV_ClearWorld ();
-	
+
 	for (i=1 ; i< CM_NumInlineModels() ; i++)
 	{
 		Com_sprintf (sv.configstrings[CS_MODELS+1+i], sizeof(sv.configstrings[CS_MODELS+1+i]),
@@ -245,7 +245,7 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 
 	//
 	// spawn the rest of the entities on the map
-	//	
+	//
 
 	// precache and static commands can be issued during
 	// map initialization
@@ -262,7 +262,7 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 	// all precaches are complete
 	sv.state = serverstate;
 	Com_SetServerState (sv.state);
-	
+
 	// create a baseline for more efficient communications
 	SV_CreateBaseline ();
 
@@ -299,6 +299,8 @@ void SV_InitGame (void)
 		CL_Drop ();
 		SCR_BeginLoadingPlaque ();
 	}
+
+	CL_Drop (); // FIXME: always drop on server restart
 
 	// get any latched variable changes (maxclients, etc)
 	Cvar_GetLatchedVars ();
@@ -392,7 +394,9 @@ void SV_Map (qboolean attractloop, char *levelstring, qboolean loadgame)
 	char	*ch;
 	int		l;
 	char	spawnpoint[MAX_QPATH];
+	server_state_t	serverstate;
 
+	serverstate = ss_game;
 	sv.loadgame = loadgame;
 	sv.attractloop = attractloop;
 
@@ -430,32 +434,27 @@ void SV_Map (qboolean attractloop, char *levelstring, qboolean loadgame)
 		strcpy (level, level+1);
 
 	l = strlen(level);
-	if (l > 4 && !strcmp (level+l-4, ".cin") )
+	if (l > 4)
 	{
-		SCR_BeginLoadingPlaque ();			// for local system
-		SV_BroadcastCommand ("changing\n");
-		SV_SpawnServer (level, spawnpoint, ss_cinematic, attractloop, loadgame);
+		if (!strcmp (level+l-4, ".cin") )
+			serverstate = ss_cinematic;
+		else if (!strcmp (level+l-4, ".dm2") )
+			serverstate = ss_demo;
+		else if (!strcmp (level+l-4, ".pcx") )
+			serverstate = ss_pic;
 	}
-	else if (l > 4 && !strcmp (level+l-4, ".dm2") )
+
+	SCR_BeginLoadingPlaque ();			// for local system
+	SV_BroadcastCommand ("changing\n");
+
+	if(serverstate == ss_game)
 	{
-		SCR_BeginLoadingPlaque ();			// for local system
-		SV_BroadcastCommand ("changing\n");
-		SV_SpawnServer (level, spawnpoint, ss_demo, attractloop, loadgame);
-	}
-	else if (l > 4 && !strcmp (level+l-4, ".pcx") )
-	{
-		SCR_BeginLoadingPlaque ();			// for local system
-		SV_BroadcastCommand ("changing\n");
-		SV_SpawnServer (level, spawnpoint, ss_pic, attractloop, loadgame);
-	}
-	else
-	{
-		SCR_BeginLoadingPlaque ();			// for local system
-		SV_BroadcastCommand ("changing\n");
 		SV_SendClientMessages ();
-		SV_SpawnServer (level, spawnpoint, ss_game, attractloop, loadgame);
+		SV_SpawnServer (level, spawnpoint, serverstate, attractloop, loadgame);
 		Cbuf_CopyToDefer ();
 	}
+	else
+		SV_SpawnServer (level, spawnpoint, serverstate, attractloop, loadgame);
 
 	SV_BroadcastCommand ("reconnect\n");
 }
