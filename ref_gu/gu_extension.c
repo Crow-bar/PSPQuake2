@@ -38,6 +38,10 @@ extern int ge_list_executed[];
 
 static unsigned int gu_list_size;
 
+#define GE_SET_CMD(cmd)			(cmd << 24)
+#define GE_SET_ARG(arg)			(arg & 0x00ffffff)
+#define GE_SET_CMDWA(cmd, arg)	(GE_SET_CMD(cmd) | GE_SET_ARG(arg))
+
 void extGuStart (int cid, void* list, int size)
 {
 	gu_list_size = size;
@@ -67,8 +71,8 @@ void extGuEndMemory (void *eaddr)
 		jumpaddr = (unsigned int*)((unsigned int)gu_list->current + size);
 
 		// jump cmd
-		gu_list->current[0] = (16 << 24) | ((((unsigned int)jumpaddr) >> 8) & 0xf0000); // base 8
-		gu_list->current[1] = (8 << 24) | (((unsigned int)jumpaddr) & 0xffffff); // jump 24
+		gu_list->current[0] = GE_SET_CMD(16) | ((((unsigned int)jumpaddr) >> 8) & 0xf0000); // base 8
+		gu_list->current[1] = GE_SET_CMD(8)  | (((unsigned int)jumpaddr) & 0xffffff); // jump 24
 
 		// set current addr
 		gu_list->current = jumpaddr;
@@ -91,7 +95,4 @@ void *extGuBeginPacket (unsigned int *maxsize)
 void extGuEndPacket (void *eaddr)
 {
 	gu_list->current = eaddr;
-
-	if (!gu_curr_context)
-		sceGeListUpdateStallAddr (ge_list_executed[0], eaddr);
 }

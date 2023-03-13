@@ -23,27 +23,49 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 gurender_t	gu_render;
 
+cvar_t	*gl_bufferformat;
+
 // Set frame buffer
 #define PSP_FB_WIDTH		480
 #define PSP_FB_HEIGHT		272
 #define PSP_FB_BWIDTH		512
-#define PSP_FB_FORMAT		GU_PSM_5650 //4444,5551,5650,8888
-
-#if   PSP_FB_FORMAT == GU_PSM_4444
-#define PSP_FB_BPP			2
-#elif PSP_FB_FORMAT == GU_PSM_5551
-#define PSP_FB_BPP			2
-#elif PSP_FB_FORMAT == GU_PSM_5650
-#define PSP_FB_BPP			2
-#elif PSP_FB_FORMAT == GU_PSM_8888
-#define PSP_FB_BPP			4
-#endif
 
 #define PSP_GU_LIST_SIZE	0x100000 // 1Mb
 
 static byte context_list[PSP_GU_LIST_SIZE] __attribute__((aligned( 64 )));
 
 qboolean GU_InitGraphics( qboolean fullscreen );
+
+/*
+===============
+GU_SetMode
+===============
+*/
+void GU_SetBufferFormat (int value, int *format, int *bpp)
+{
+	switch(value)
+	{
+	case 8888:
+		*format = GU_PSM_8888;
+		*bpp = 4;
+		break;
+	case 4444:
+		*format = GU_PSM_4444;
+		*bpp = 2;
+		break;
+	case 5551:
+		*format = GU_PSM_5551;
+		*bpp = 2;
+		break;
+	default:
+		ri.Con_Printf( PRINT_ALL, "invalid buffer format!\n" );
+	case 5650:
+	case 565:
+		*format = GU_PSM_5650;
+		*bpp = 2;
+		break;
+	}
+}
 
 /*
 ===============
@@ -130,7 +152,10 @@ GU_Init
 */
 int GU_Init (void *hinstance, void *wndproc)
 {
+	size_t	buffersize;
 	memset (&gu_render, 0, sizeof(gu_render));
+
+	gl_bufferformat = ri.Cvar_Get ("gl_bufferformat", "5650", CVAR_ARCHIVE);
 
 	if (vinit() < 0)
 	{
@@ -142,21 +167,23 @@ int GU_Init (void *hinstance, void *wndproc)
 	gu_render.screen.height = PSP_FB_HEIGHT;
 
 	gu_render.buffer.width = PSP_FB_BWIDTH;
-	gu_render.buffer.format = PSP_FB_FORMAT;
-	gu_render.buffer.bpp = PSP_FB_BPP;
+
+	GU_SetBufferFormat ((int)gl_bufferformat->value, &gu_render.buffer.format, &gu_render.buffer.bpp);
 
 	gu_render.list.ptr = context_list;
 	gu_render.list.size = sizeof(context_list);
 
-	gu_render.buffer.draw_ptr = (void*)valloc (gu_render.buffer.width * gu_render.screen.height * gu_render.buffer.bpp);
+	buffersize = gu_render.buffer.width * gu_render.screen.height * gu_render.buffer.bpp;
+
+	gu_render.buffer.draw_ptr = (void*)valloc (buffersize);
 	if (!gu_render.buffer.draw_ptr)
 		Sys_Error("Memory allocation failled! (draw buffer)\n");
 
-	gu_render.buffer.disp_ptr = (void*)valloc (gu_render.buffer.width * gu_render.screen.height * gu_render.buffer.bpp);
+	gu_render.buffer.disp_ptr = (void*)valloc (buffersize);
 	if (!gu_render.buffer.disp_ptr)
 		Sys_Error("Memory allocation failled! (disp buffer)\n");
 
-	gu_render.buffer.depth_ptr = (void*)valloc (gu_render.buffer.width * gu_render.screen.height * gu_render.buffer.bpp);
+	gu_render.buffer.depth_ptr = (void*)valloc (buffersize);
 	if (!gu_render.buffer.depth_ptr)
 		Sys_Error("Memory allocation failled! (depth buffer)\n");
 

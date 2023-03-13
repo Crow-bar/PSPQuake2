@@ -841,26 +841,106 @@ void GL_MipMap (byte *in, int width, int height)
 
 /*
 ===============
-GL_BuildPalettedTexture
+GL_PixelConverter
 ===============
 */
-void GL_BuildPalettedTexture( unsigned char *paletted_texture, unsigned char *scaled, int scaled_width, int scaled_height )
+void GL_PixelConverter (byte *dst, const byte *src, int width, int height, int informat, int outformat)
 {
-	int i;
+	int		x, y;
+	byte	color[4];
+	int		tempColor;
+	byte	correction;
 
-	for ( i = 0; i < scaled_width * scaled_height; i++ )
+	color[0] = color[1] = color[2] = color[3] = 0xff;
+
+	for (y = 0; y < height; y++)
 	{
-		unsigned int r, g, b, c;
+		for (x = 0; x < width; x++)
+		{
+			// unpack
+			switch (informat)
+			{
+			case GU_PSM_T8:
+				color[0]  = (d_8to24table[*src]      ) & 0xff;
+				color[1]  = (d_8to24table[*src] >> 8 ) & 0xff;
+				color[2]  = (d_8to24table[*src] >> 16) & 0xff;
+				color[3]  = (d_8to24table[*src] >> 24) & 0xff; src++;
+				break;
+			case GU_PSM_5650:
+				color[0]  = (*src & 0x1f) << 3;
+				color[1]  = (*src & 0xe0) >> 3; src++;
+				color[1] |= (*src & 0x07) << 5;
+				color[2]  = (*src & 0xf8);      src++;
+				color[3]  = 0xff;
+				break;
+			case GU_PSM_5551:
+				color[0]  = (*src & 0x1f) << 3;
+				color[1]  = (*src & 0xe0) >> 2; src++;
+				color[1] |= (*src & 0x03) << 6;
+				color[2]  = (*src & 0x7c) << 1;
+				color[3]  = (*src & 0x80) ? 0xff : 0x00; src++;
+				break;
+			case GU_PSM_4444:
+				color[0]  = (*src & 0x0f) << 4;
+				color[1]  = (*src & 0xf0);      src++;
+				color[2]  = (*src & 0x0f) << 4;
+				color[3]  = (*src & 0xf0);      src++;
+				break;
+			case GU_PSM_8888:
+				color[0]  = *src; src++;
+				color[1]  = *src; src++;
+				color[2]  = *src; src++;
+				color[3]  = *src; src++;
+				break;
+			default:
+				ri.Sys_Error (ERR_DROP, "GL_PixelConverter: unknown input format\n");
+				break;
+			}
 
-		r = ( scaled[0] >> 3 ) & 31;
-		g = ( scaled[1] >> 2 ) & 63;
-		b = ( scaled[2] >> 3 ) & 31;
+			// pack
+			switch (outformat)
+			{
+			case GU_PSM_T8:
+				if (!gl_state.d_16to8table)
+					ri.Sys_Error (ERR_DROP, "GL_PixelConverter: d_16to8table is null\n");
 
-		c = r | ( g << 5 ) | ( b << 11 );
+				// to 565
+				tempColor  = (color[0] >> 3) & 0x01f;
+				tempColor |= (color[1] << 3) & 0x7e0;
+				tempColor |= (color[2] << 8) & 0xf80;
 
-		paletted_texture[i] = gl_state.d_16to8table[c];
-
-		scaled += 4;
+				*dst = gl_state.d_16to8table[tempColor]; dst++;
+				break;
+			case GU_PSM_5650:
+				*dst  = (color[0] >> 3) & 0x1f;
+				*dst |= (color[1] << 3) & 0xe0; dst++;
+				*dst  = (color[1] >> 5) & 0x07;
+				*dst |= (color[2]     ) & 0xf8; dst++;
+				break;
+			case GU_PSM_5551:
+				*dst  = (color[0] >> 3);
+				*dst |= (color[1] << 2) & 0xe0; dst++;
+				*dst  = (color[1] >> 6) & 0x03;
+				*dst |= (color[2] >> 1) & 0x7c;
+				*dst |= (color[3]     ) & 0x80; dst++;
+				break;
+			case GU_PSM_4444:
+				*dst  = (color[0] >> 4) & 0x0f;
+				*dst |= (color[1]     ) & 0xf0; dst++;
+				*dst  = (color[2] >> 4) & 0x0f;
+				*dst |= (color[3]     ) & 0xf0; dst++;
+				break;
+			case GU_PSM_8888:
+				*dst = color[0]; dst++;
+				*dst = color[1]; dst++;
+				*dst = color[2]; dst++;
+				*dst = color[3]; dst++;
+				break;
+			default:
+				ri.Sys_Error (ERR_DROP, "GL_PixelConverter: unknown output format\n");
+				break;
+			}
+		}
 	}
 }
 
@@ -1013,7 +1093,6 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 	byte		*tempbuff;
 	int			i;
 	int			mark;
-	//static byte		pal_buffer[256*256];
 
 	GL_SetTextureDimensions (image, width, height);
 	GL_SetTextureFormat (image);
@@ -1202,7 +1281,7 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, int flags)
 	// load little pics into the scrap
 	if (IMG_IS_PIC(image) && IMG_IS_IND(image) && width < 64 && height < 64)
 	{
-		if(!GL_UploadScrap (image, pic, width, height))
+		if (!GL_UploadScrap (image, pic, width, height))
 			GL_UploadTexture (image, pic, width, height);
 	}
 	else

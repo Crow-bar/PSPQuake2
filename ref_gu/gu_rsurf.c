@@ -38,8 +38,6 @@ msurface_t	*r_alpha_surfaces;
 int		c_visible_lightmaps;
 int		c_visible_textures;
 
-#define GL_LIGHTMAP_FORMAT GL_RGBA
-
 typedef struct
 {
 	int internal_format;

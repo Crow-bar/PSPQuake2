@@ -112,6 +112,9 @@ typedef struct image_s
 	short		uplwidth, uplheight;	// after power of two and picmip
 
 	byte		*data;
+#ifdef TEXTURE_PKT_MODE
+	extgu_pkt_t	*pkt;
+#endif
 	int			format;
 	uint		flags;
 
@@ -358,6 +361,7 @@ void GL_TextureSolidMode( char *string );
 
 void GL_ResampleTexture32 (const byte *src, int inwidth, int inheight, const byte *dst, int outwidth, int outheight);
 void GL_ResampleTexture8 (const byte *src, int inwidth, int inheight, byte *dst, int outwidth, int outheight);
+void GL_PixelConverter (byte *dst, const byte *src, int width, int height, int informat, int outformat);
 qboolean GL_UpdateTexture (image_t *image, int xoff, int yoff, int width, int height, const void *buffer);
 void GL_BuildGammaTable (float gamma, float intensity);
 

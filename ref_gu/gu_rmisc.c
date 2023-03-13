@@ -150,7 +150,8 @@ void GL_ScreenShot_f (void)
 	byte		*buffer;
 	char		picname[80];
 	char		checkname[MAX_OSPATH];
-	int			i, c, temp;
+	int			i, j, size, temp;
+	byte		*dst, *src;
 
 //
 // find a file name to save it to
@@ -171,8 +172,8 @@ void GL_ScreenShot_f (void)
 		return;
  	}
 
-
-	buffer = malloc(vid.width*vid.height*3 + 18);
+	size = vid.width*vid.height*3 + 18;
+	buffer = malloc(size);
 	memset (buffer, 0, 18);
 	buffer[2] = 2;		// uncompressed type
 	buffer[12] = vid.width&255;
@@ -180,21 +181,29 @@ void GL_ScreenShot_f (void)
 	buffer[14] = vid.height&255;
 	buffer[15] = vid.height>>8;
 	buffer[16] = 24;	// pixel size
-/*
-	qglReadPixels (0, 0, vid.width, vid.height, GL_RGB, GL_UNSIGNED_BYTE, buffer+18 );
-*/
-	// swap rgb to bgr
-	c = 18+vid.width*vid.height*3;
-	for (i=18 ; i<c ; i+=3)
+
+	src = (byte*)gu_render.buffer.disp_ptr;
+	dst = buffer+18;
+	for(i = 0; i < vid.height; i++)
 	{
-		temp = buffer[i];
-		buffer[i] = buffer[i+2];
-		buffer[i+2] = temp;
+		/***/
+		for(j = 0; j < vid.width; j++)
+		{
+			// 565 to bgr
+			dst[j * 3 + 2]  = (src[j * 2 + 0] & 0x1f) << 3;
+			dst[j * 3 + 1]  = (src[j * 2 + 0] & 0xe0) >> 3;
+			dst[j * 3 + 1] |= (src[j * 2 + 1] & 0x07) << 5;
+			dst[j * 3 + 0]  = (src[j * 2 + 1] & 0xf8);
+		}
+		/***/
+		dst += vid.width * 3;
+		src += gu_render.buffer.width * 2;
 	}
 
-	ri.FS_WriteFile(checkname, buffer, c, FS_PATH_GAMEDIR);
+	ri.FS_WriteFile(checkname, buffer, size, FS_PATH_GAMEDIR);
 
 	free (buffer);
+
 	ri.Con_Printf (PRINT_ALL, "Wrote %s\n", picname);
 }
 
