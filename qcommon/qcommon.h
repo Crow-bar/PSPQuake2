@@ -543,7 +543,11 @@ NET
 #define	MAX_MSGLEN		1400		// max length of a message
 #define	PACKET_HEADER	10			// two ints and a short
 
+#ifdef __psp__
+typedef enum {NA_LOOPBACK, NA_BROADCAST, NA_IP, NA_PDP, NA_BROADCAST_PDP} netadrtype_t;
+#else
 typedef enum {NA_LOOPBACK, NA_BROADCAST, NA_IP, NA_IPX, NA_BROADCAST_IPX} netadrtype_t;
+#endif
 
 typedef enum {NS_CLIENT, NS_SERVER} netsrc_t;
 
@@ -552,7 +556,12 @@ typedef struct
 	netadrtype_t	type;
 
 	byte	ip[4];
+
+#ifdef __psp__
+	byte	mac[6]; // pdp
+#else
 	byte	ipx[10];
+#endif
 
 	unsigned short	port;
 } netadr_t;
@@ -569,8 +578,8 @@ qboolean	NET_CompareAdr (netadr_t a, netadr_t b);
 qboolean	NET_CompareBaseAdr (netadr_t a, netadr_t b);
 qboolean	NET_IsLocalAddress (netadr_t adr);
 char		*NET_AdrToString (netadr_t a);
-qboolean	NET_StringToAdr (char *s, netadr_t *a);
-void		NET_Sleep(int msec);
+qboolean	NET_StringToAdr (char *s, netadr_t *a, unsigned short dport);
+void		NET_Sleep (int msec);
 
 //============================================================================
 
@@ -641,7 +650,6 @@ CMODEL
 #include "../qcommon/qfiles.h"
 
 cmodel_t	*CM_LoadMap (char *name, qboolean clientload, unsigned *checksum);
-qboolean	CM_ClientReady (void);
 void		CM_ClearMap (void);
 cmodel_t	*CM_InlineModel (char *name);	// *1, *2, etc
 

@@ -422,14 +422,12 @@ void CL_SendConnectPacket (void)
 	netadr_t	adr;
 	int		port;
 
-	if (!NET_StringToAdr (cls.servername, &adr))
+	if (!NET_StringToAdr (cls.servername, &adr, PORT_SERVER))
 	{
 		Com_Printf ("Bad server address\n");
 		cls.connect_time = 0;
 		return;
 	}
-	if (adr.port == 0)
-		adr.port = BigShort (PORT_SERVER);
 
 	port = Cvar_VariableValue ("qport");
 	userinfo_modified = false;
@@ -468,14 +466,12 @@ void CL_CheckForResend (void)
 	if (cls.realtime - cls.connect_time < 3000)
 		return;
 
-	if (!NET_StringToAdr (cls.servername, &adr))
+	if (!NET_StringToAdr (cls.servername, &adr, PORT_SERVER))
 	{
 		Com_Printf ("Bad server address\n");
 		cls.state = ca_disconnected;
 		return;
 	}
-	if (adr.port == 0)
-		adr.port = BigShort (PORT_SERVER);
 
 	cls.connect_time = cls.realtime;	// for retransmit requests
 
@@ -574,9 +570,12 @@ void CL_Rcon_f (void)
 
 			return;
 		}
-		NET_StringToAdr (rcon_address->string, &to);
-		if (to.port == 0)
-			to.port = BigShort (PORT_SERVER);
+
+		if (!NET_StringToAdr (rcon_address->string, &to, PORT_SERVER))
+		{
+			Com_Printf ("Bad server address\n");
+			return;
+		}
 	}
 	
 	NET_SendPacket (NS_CLIENT, strlen(message)+1, message, to);
@@ -696,13 +695,11 @@ void CL_Packet_f (void)
 
 	NET_Config (true);		// allow remote
 
-	if (!NET_StringToAdr (Cmd_Argv(1), &adr))
+	if (!NET_StringToAdr (Cmd_Argv(1), &adr, PORT_SERVER))
 	{
 		Com_Printf ("Bad address\n");
 		return;
 	}
-	if (!adr.port)
-		adr.port = BigShort (PORT_SERVER);
 
 	in = Cmd_Argv(2);
 	out = send+4;
@@ -825,6 +822,7 @@ void CL_PingServers_f (void)
 		Netchan_OutOfBandPrint (NS_CLIENT, adr, va("info %i", PROTOCOL_VERSION));
 	}
 
+#ifndef __psp__
 	noipx = Cvar_Get ("noipx", "0", CVAR_NOSET);
 	if (!noipx->value)
 	{
@@ -832,6 +830,11 @@ void CL_PingServers_f (void)
 		adr.port = BigShort(PORT_SERVER);
 		Netchan_OutOfBandPrint (NS_CLIENT, adr, va("info %i", PROTOCOL_VERSION));
 	}
+#else
+	adr.type = NA_BROADCAST_PDP;
+	adr.port = PORT_SERVER;
+	Netchan_OutOfBandPrint (NS_CLIENT, adr, va("info %i", PROTOCOL_VERSION));
+#endif
 
 	// send a packet to each address book entry
 	for (i=0 ; i<16 ; i++)
@@ -842,13 +845,12 @@ void CL_PingServers_f (void)
 			continue;
 
 		Com_Printf ("pinging %s...\n", adrstring);
-		if (!NET_StringToAdr (adrstring, &adr))
+		if (!NET_StringToAdr (adrstring, &adr, PORT_SERVER))
 		{
 			Com_Printf ("Bad address: %s\n", adrstring);
 			continue;
 		}
-		if (!adr.port)
-			adr.port = BigShort(PORT_SERVER);
+
 		Netchan_OutOfBandPrint (NS_CLIENT, adr, va("info %i", PROTOCOL_VERSION));
 	}
 }

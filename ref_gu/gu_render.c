@@ -24,6 +24,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 gurender_t	gu_render;
 
 cvar_t	*gl_bufferformat;
+cvar_t	*gl_vsync;
+cvar_t	*gl_netactive;
 
 // Set frame buffer
 #define PSP_FB_WIDTH		480
@@ -156,6 +158,8 @@ int GU_Init (void *hinstance, void *wndproc)
 	memset (&gu_render, 0, sizeof(gu_render));
 
 	gl_bufferformat = ri.Cvar_Get ("gl_bufferformat", "5650", CVAR_ARCHIVE);
+	gl_vsync = ri.Cvar_Get ("gl_vsync", "0", CVAR_ARCHIVE);
+	gl_netactive = ri.Cvar_Get ("net_active", "0", 0);
 
 	if (vinit() < 0)
 	{
@@ -279,6 +283,10 @@ void GU_EndFrame (void)
 	// finish rendering.
 	sceGuFinish ();
 	sceGuSync (GU_SYNC_FINISH, GU_SYNC_WAIT);
+
+	// vsync
+	if (gl_vsync->value || gl_netactive->value)
+		sceDisplayWaitVblankStart ();
 
 	// swap the buffers.
 	sceGuSwapBuffers();

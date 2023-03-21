@@ -717,16 +717,18 @@ void R_SetupFrame (void)
 	c_brush_polys = 0;
 	c_alias_polys = 0;
 
+#if 0 // not used, sceGuClear has a bug
 	// clear out the portion of the screen that the NOWORLDMODEL defines
 	if ( r_newrefdef.rdflags & RDF_NOWORLDMODEL )
 	{
-		sceGuEnable (GU_SCISSOR_TEST);
+		//sceGuEnable (GU_SCISSOR_TEST);
 		sceGuClearColor (GU_HCOLOR_4F(0.3, 0.3, 0.3, 1.0));
 		sceGuScissor (r_newrefdef.x, vid.height - r_newrefdef.height - r_newrefdef.y, r_newrefdef.width, r_newrefdef.height );
 		sceGuClear (GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT);
 		sceGuClearColor (GU_HCOLOR_4F(1.0, 0.0, 0.5, 0.5));
-		sceGuDisable (GU_SCISSOR_TEST);
+		//sceGuDisable (GU_SCISSOR_TEST);
 	}
+#endif
 }
 
 /*

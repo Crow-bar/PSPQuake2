@@ -207,9 +207,6 @@ void CL_PredictMovement (void)
 	int			step;
 	int			oldz;
 
-	if (!CM_ClientReady())
-		return;
-
 	if (cls.state != ca_active)
 		return;
 

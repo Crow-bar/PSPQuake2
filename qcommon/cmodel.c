@@ -104,8 +104,6 @@ typedef struct
 	int				checkcount;
 
 	byte			portalopen[MAX_MAP_AREAPORTALS];
-
-	qboolean		clientready;
 } clipMap_t;
 
 static mapsurface_t	nullsurface;
@@ -582,7 +580,6 @@ cmodel_t *CM_LoadMap (char *name, qboolean clientload, unsigned *checksum)
 
 	if (!strcmp(cm.name, name) && clientload)
 	{
-		cm.clientready = true;
 		*checksum = last_checksum;
 		return cm.cmodels;
 	}
@@ -642,16 +639,6 @@ cmodel_t *CM_LoadMap (char *name, qboolean clientload, unsigned *checksum)
 	FloodAreaConnections ();
 
 	return cm.cmodels;
-}
-
-/*
-==================
-CM_ClientReady
-==================
-*/
-qboolean CM_ClientReady (void)
-{
-	return cm.clientready;
 }
 
 /*

@@ -53,7 +53,7 @@ DEBUG_CFLAGS=$(BASE_CFLAGS) -g
 
 #LDFLAGS = -lm
 
-LIBS = -lpspgum_vfpu -lpspvfpu -lpspgu -lpspdmac -lpspaudio -lm
+LIBS = -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspgum_vfpu -lpspvfpu -lpspgu -lpspdmac -lpspaudio -lm
 
 #############################################################################
 # SETUP AND BUILD
@@ -136,11 +136,11 @@ QUAKE2_OBJS = \
 	$(PSP_DIR)/vid_psp.o \
 	$(PSP_DIR)/vid_menu.o \
 	$(PSP_DIR)/snd_psp.o \
+	$(PSP_DIR)/net_psp.o \
 	$(PSP_DIR)/q_shpsp.o \
 	$(PSP_DIR)/glob.o \
 	\
 	$(NULL_DIR)/cd_null.o \
-	$(NULL_DIR)/net_null.o \
 	\
 	$(GAME_DIR)/q_shared.o \
 	$(COMMON_DIR)/pmove.o

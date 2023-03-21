@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -17,6 +17,10 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 */
+
+#ifdef __psp__
+#include <psputility_netparam.h>
+#endif
 #ifdef _WIN32
 #include <io.h>
 #endif
@@ -83,7 +87,7 @@ void M_PushMenu ( void (*draw) (void), const char *(*key) (int k) )
 {
 	int		i;
 
-	if (Cvar_VariableValue ("maxclients") == 1 
+	if (Cvar_VariableValue ("maxclients") == 1
 		&& Com_ServerState ())
 		Cvar_Set ("paused", "1");
 
@@ -229,7 +233,7 @@ const char *Default_MenuKey( menuframework_s *m, int key )
 	case K_AUX30:
 	case K_AUX31:
 	case K_AUX32:
-		
+
 	case K_KP_ENTER:
 	case K_ENTER:
 	case K_A_BUTTON:
@@ -358,7 +362,7 @@ void M_DrawTextBox (int x, int y, int width, int lines)
 	M_DrawCharacter (cx, cy+8, 9);
 }
 
-		
+
 /*
 =======================================================================
 
@@ -492,6 +496,73 @@ static menuaction_s		s_join_network_server_action;
 static menuaction_s		s_start_network_server_action;
 static menuaction_s		s_player_setup_action;
 
+#ifdef __psp__
+static menulist_s		s_network_mode_list;
+static menulist_s		s_access_point_list;
+
+static char **netaccesspoints_list = NULL;
+static int	netaccesspoints_count;
+
+static qboolean Multiplayer_BuildApList (void)
+{
+	int		i;
+	char	buffer[128];
+	int		listsize;
+
+	if (netaccesspoints_list)
+		return (netaccesspoints_count > 1);
+
+	netaccesspoints_count = 1;
+	while (1)
+	{
+		if (sceUtilityCheckNetParam (netaccesspoints_count))
+			break;
+		netaccesspoints_count++;
+	}
+
+	netaccesspoints_list = Z_Malloc (sizeof(char *) * (netaccesspoints_count + 1));
+	memset (netaccesspoints_list, 0, sizeof(char *) * (netaccesspoints_count + 1));
+
+	netaccesspoints_list[0] = CopyString ("None");
+	for (i = 1; i < netaccesspoints_count; i++)
+	{
+		if (!sceUtilityGetNetParam (i, PSP_NETPARAM_NAME, (void *)buffer))
+			netaccesspoints_list[i] = CopyString (buffer);
+	}
+
+	return (netaccesspoints_count > 1);
+}
+
+static void Multiplayer_FreeApList (void)
+{
+	int	i;
+
+	if (!netaccesspoints_list)
+		return;
+
+	for (i = 0; i < netaccesspoints_count; i++)
+	{
+		if (netaccesspoints_list[i])
+			Z_Free (netaccesspoints_list[i]);
+	}
+	Z_Free (netaccesspoints_list);
+
+	netaccesspoints_count = 0;
+	netaccesspoints_list = NULL;
+}
+
+static void NetModeFunc( void *unused )
+{
+	Cvar_SetValue( "net_mode", s_network_mode_list.curvalue );
+}
+
+static void NetApFunc( void *unused )
+{
+	Cvar_SetValue( "net_accesspoint", s_access_point_list.curvalue );
+}
+
+#endif
+
 static void Multiplayer_MenuDraw (void)
 {
 	M_Banner( "m_banner_multiplayer" );
@@ -517,29 +588,86 @@ static void StartNetworkServerFunc( void *unused )
 
 void Multiplayer_MenuInit( void )
 {
+	int		offset_y;
+#ifdef __psp__
+	cvar_t	*net_accesspoint;
+	cvar_t	*net_mode;
+
+	static const char *netmode_items[] =
+	{
+		"Loopback",
+		"Infrastructure",
+		"Ad-hoc",
+		0
+	};
+
+	Multiplayer_BuildApList ();
+
+	net_accesspoint = Cvar_Get ("net_accesspoint", "0", CVAR_ARCHIVE);
+	net_mode = Cvar_Get ("net_mode", "0", CVAR_ARCHIVE);
+
+	if (net_accesspoint->value >= netaccesspoints_count)
+		Cvar_SetValue ("net_accesspoint", 0);
+
+	s_multiplayer_menu.x = viddef.width / 2;
+	s_multiplayer_menu.y = viddef.height / 2 - 58;
+	s_multiplayer_menu.nitems = 0;
+
+	offset_y = 30;
+
+	s_network_mode_list.generic.type		= MTYPE_SPINCONTROL;
+	s_network_mode_list.generic.x			= 0;
+	s_network_mode_list.generic.y			= 0;
+	s_network_mode_list.generic.name		= " network mode";
+	s_network_mode_list.generic.callback	= NetModeFunc;
+	s_network_mode_list.itemnames			= netmode_items;
+	s_network_mode_list.curvalue			= net_mode->value;
+
+	s_access_point_list.generic.type		= MTYPE_SPINCONTROL;
+	s_access_point_list.generic.x			= 0;
+	s_access_point_list.generic.y			= 10;
+	s_access_point_list.generic.name		= " access point";
+	s_access_point_list.generic.callback	= NetApFunc;
+	s_access_point_list.itemnames			= (const char **)netaccesspoints_list;
+	s_access_point_list.curvalue			= net_accesspoint->value;
+#else
 	s_multiplayer_menu.x = viddef.width * 0.50 - 64;
 	s_multiplayer_menu.nitems = 0;
 
-	s_join_network_server_action.generic.type	= MTYPE_ACTION;
-	s_join_network_server_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_join_network_server_action.generic.x		= 0;
-	s_join_network_server_action.generic.y		= 0;
-	s_join_network_server_action.generic.name	= " join network server";
-	s_join_network_server_action.generic.callback = JoinNetworkServerFunc;
+	offset_y = 0;
+#endif
 
-	s_start_network_server_action.generic.type	= MTYPE_ACTION;
-	s_start_network_server_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_start_network_server_action.generic.x		= 0;
-	s_start_network_server_action.generic.y		= 10;
-	s_start_network_server_action.generic.name	= " start network server";
-	s_start_network_server_action.generic.callback = StartNetworkServerFunc;
+	s_join_network_server_action.generic.type		= MTYPE_ACTION;
+#ifndef __psp__
+	s_join_network_server_action.generic.flags		= QMF_LEFT_JUSTIFY;
+#endif
+	s_join_network_server_action.generic.x			= 0;
+	s_join_network_server_action.generic.y			= offset_y + 0;
+	s_join_network_server_action.generic.name		= " join network server";
+	s_join_network_server_action.generic.callback	= JoinNetworkServerFunc;
 
-	s_player_setup_action.generic.type	= MTYPE_ACTION;
-	s_player_setup_action.generic.flags  = QMF_LEFT_JUSTIFY;
-	s_player_setup_action.generic.x		= 0;
-	s_player_setup_action.generic.y		= 20;
-	s_player_setup_action.generic.name	= " player setup";
-	s_player_setup_action.generic.callback = PlayerSetupFunc;
+	s_start_network_server_action.generic.type		= MTYPE_ACTION;
+#ifndef __psp__
+	s_start_network_server_action.generic.flags		= QMF_LEFT_JUSTIFY;
+#endif
+	s_start_network_server_action.generic.x			= 0;
+	s_start_network_server_action.generic.y			= offset_y + 10;
+	s_start_network_server_action.generic.name		= " start network server";
+	s_start_network_server_action.generic.callback	= StartNetworkServerFunc;
+
+	s_player_setup_action.generic.type		= MTYPE_ACTION;
+#ifndef __psp__
+	s_player_setup_action.generic.flags		= QMF_LEFT_JUSTIFY;
+#endif
+	s_player_setup_action.generic.x			= 0;
+	s_player_setup_action.generic.y			= offset_y + 20;
+	s_player_setup_action.generic.name		= " player setup";
+	s_player_setup_action.generic.callback	= PlayerSetupFunc;
+
+#ifdef __psp__
+	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_network_mode_list );
+	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_access_point_list );
+#endif
 
 	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_join_network_server_action );
 	Menu_AddItem( &s_multiplayer_menu, ( void * ) &s_start_network_server_action );
@@ -552,6 +680,11 @@ void Multiplayer_MenuInit( void )
 
 const char *Multiplayer_MenuKey( int key )
 {
+#ifdef __psp__
+	if ( key == K_ESCAPE || key == K_START_BUTTON || key == K_B_BUTTON )
+		Multiplayer_FreeApList ();
+#endif
+
 	return Default_MenuKey( &s_multiplayer_menu, key );
 }
 
@@ -594,7 +727,7 @@ char *bindnames[][2] =
 {"invprev",			"prev item"},
 {"invnext",			"next item"},
 
-{"cmd help", 		"help computer" }, 
+{"cmd help", 		"help computer" },
 { 0, 0 }
 };
 
@@ -685,7 +818,7 @@ static void DrawKeyBindingFunc( void *self )
 	menuaction_s *a = ( menuaction_s * ) self;
 
 	M_FindKeysForCommand( bindnames[a->generic.localdata[0]][0], keys);
-		
+
 	if (keys[0] == -1)
 	{
 		Menu_DrawString( a->generic.x + a->generic.parent->x + 16, a->generic.y + a->generic.parent->y, "???" );
@@ -962,7 +1095,7 @@ static const char *Keys_MenuKey( int key )
 	menuaction_s *item = ( menuaction_s * ) Menu_ItemAtCursor( &s_keys_menu );
 
 	if ( bind_grab )
-	{	
+	{
 		if ( key != K_ESCAPE && key != K_START_BUTTON && key != K_MODE_BUTTON && key != '`' )
 		{
 			char cmd[1024];
@@ -1177,7 +1310,7 @@ static void UpdateSoundQualityFunc( void *unused )
 		Cvar_SetValue( "s_khz", 11 );
 		Cvar_SetValue( "s_loadas8bit", true );
 	}
-	
+
 	Cvar_SetValue( "s_primary", s_options_compatibility_list.curvalue );
 
 	M_DrawTextBox( 8, 120 - 48, 36, 3 );
@@ -1856,14 +1989,14 @@ void M_Menu_Credits_f( void )
 	else
 	{
 		isdeveloper = Developer_searchpath (1);
-		
+
 		if (isdeveloper == 1)			// xatrix
 			credits = xatcredits;
 		else if (isdeveloper == 2)		// ROGUE
 			credits = roguecredits;
 		else
 		{
-			credits = idcredits;	
+			credits = idcredits;
 		}
 
 	}
@@ -2417,7 +2550,7 @@ void RulesChangeFunc ( void *self )
 	// ROGUE GAMES
 	else if(Developer_searchpath(2) == 2)
 	{
-		if (s_rules_box.curvalue == 2)			// tag	
+		if (s_rules_box.curvalue == 2)			// tag
 		{
 			s_maxclients_field.generic.statusbar = NULL;
 			s_startserver_dmoptions_action.generic.statusbar = NULL;
@@ -2588,7 +2721,7 @@ void StartServer_MenuInit( void )
 	s_rules_box.generic.x	= 0;
 	s_rules_box.generic.y	= 20;
 	s_rules_box.generic.name	= "rules";
-	
+
 //PGM - rogue games only available with rogue DLL.
 	if(Developer_searchpath(2) == 2)
 		s_rules_box.itemnames = dm_coop_names_rogue;
@@ -2625,7 +2758,7 @@ void StartServer_MenuInit( void )
 	/*
 	** maxclients determines the maximum number of players that can join
 	** the game.  If maxclients is only "1" then we should default the menu
-	** option to 8 players, otherwise use whatever its current value is. 
+	** option to 8 players, otherwise use whatever its current value is.
 	** Clamping will be done when the server is actually started.
 	*/
 	s_maxclients_field.generic.type = MTYPE_FIELD;
@@ -2638,7 +2771,7 @@ void StartServer_MenuInit( void )
 	s_maxclients_field.visible_length = 3;
 	if ( Cvar_VariableValue( "maxclients" ) == 1 )
 		strcpy( s_maxclients_field.buffer, "8" );
-	else 
+	else
 		strcpy( s_maxclients_field.buffer, Cvar_VariableString("maxclients") );
 
 	s_hostname_field.generic.type = MTYPE_FIELD;
@@ -2769,7 +2902,7 @@ static void DMFlagCallback( void *self )
 			flags |= DF_NO_FALLING;
 		goto setvalue;
 	}
-	else if ( f == &s_weapons_stay_box ) 
+	else if ( f == &s_weapons_stay_box )
 	{
 		bit = DF_WEAPONS_STAY;
 	}
@@ -2894,7 +3027,7 @@ void DMOptions_MenuInit( void )
 	{
 		"no", "yes", 0
 	};
-	static const char *teamplay_names[] = 
+	static const char *teamplay_names[] =
 	{
 		"disabled", "by skin", "by model", 0
 	};
@@ -3425,14 +3558,12 @@ static qboolean PlayerConfig_ScanDirectories( void )
 	/*
 	** get a list of directories
 	*/
-	do 
+	while (( path = FS_NextPath ( path )) != NULL)
 	{
-		path = FS_NextPath( path );
-		Com_sprintf( findname, sizeof(findname), "%s/players/*.*", path );
-
-		if ( ( dirnames = FS_ListFiles( findname, &ndirs, SFF_SUBDIR, 0 ) ) != 0 )
+		Com_sprintf ( findname, sizeof(findname), "%s/players/*.*", path );
+		if (( dirnames = FS_ListFiles ( findname, &ndirs, SFF_SUBDIR, 0 )) != 0 )
 			break;
-	} while ( path );
+	}
 
 	if ( !dirnames )
 		return false;
@@ -3459,6 +3590,7 @@ static qboolean PlayerConfig_ScanDirectories( void )
 		// verify the existence of tris.md2
 		strcpy( scratch, dirnames[i] );
 		strcat( scratch, "/tris.md2" );
+
 		if ( !Sys_FindFirst( scratch, 0, SFF_SUBDIR | SFF_HIDDEN | SFF_SYSTEM ) )
 		{
 			free( dirnames[i] );
@@ -3636,7 +3768,7 @@ qboolean PlayerConfig_MenuInit( void )
 		}
 	}
 
-	s_player_config_menu.x = viddef.width / 2 - 95; 
+	s_player_config_menu.x = viddef.width / 2 - 95;
 	s_player_config_menu.y = viddef.height / 2 - 97;
 	s_player_config_menu.nitems = 0;
 
@@ -3764,7 +3896,11 @@ void PlayerConfig_MenuDraw( void )
 		entity.skin = re.RegisterSkin( scratch );
 		entity.flags = RF_FULLBRIGHT;
 		entity.origin[0] = 80;
+#ifdef __psp__
+		entity.origin[1] = -26;
+#else
 		entity.origin[1] = 0;
+#endif
 		entity.origin[2] = 0;
 		VectorCopy( entity.origin, entity.oldorigin );
 		entity.frame = 0;
@@ -3787,7 +3923,7 @@ void PlayerConfig_MenuDraw( void )
 
 		re.RenderFrame( &refdef );
 
-		Com_sprintf( scratch, sizeof( scratch ), "/players/%s/%s_i.pcx", 
+		Com_sprintf( scratch, sizeof( scratch ), "/players/%s/%s_i.pcx",
 			s_pmi[s_player_model_box.curvalue].directory,
 			s_pmi[s_player_model_box.curvalue].skindisplaynames[s_player_skin_box.curvalue] );
 		re.DrawPic( s_player_config_menu.x - 40, refdef.y, scratch );
@@ -3804,8 +3940,8 @@ const char *PlayerConfig_MenuKey (int key)
 
 		Cvar_Set( "name", s_player_name_field.buffer );
 
-		Com_sprintf( scratch, sizeof( scratch ), "%s/%s", 
-			s_pmi[s_player_model_box.curvalue].directory, 
+		Com_sprintf( scratch, sizeof( scratch ), "%s/%s",
+			s_pmi[s_player_model_box.curvalue].directory,
 			s_pmi[s_player_model_box.curvalue].skindisplaynames[s_player_skin_box.curvalue] );
 
 		Cvar_Set( "skin", scratch );

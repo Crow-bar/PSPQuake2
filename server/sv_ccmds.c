@@ -59,13 +59,11 @@ void SV_SetMaster_f (void)
 		if (slot == MAX_MASTERS)
 			break;
 
-		if (!NET_StringToAdr (Cmd_Argv(i), &master_adr[i]))
+		if (!NET_StringToAdr (Cmd_Argv(i), &master_adr[i], PORT_MASTER))
 		{
 			Com_Printf ("Bad address: %s\n", Cmd_Argv(i));
 			continue;
 		}
-		if (master_adr[slot].port == 0)
-			master_adr[slot].port = BigShort (PORT_MASTER);
 
 		Com_Printf ("Master server at %s\n", NET_AdrToString (master_adr[slot]));
 
