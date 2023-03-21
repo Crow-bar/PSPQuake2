@@ -207,7 +207,7 @@ static searchpath_t *FS_FindFile(const char *filename, int *index, int flags)
 	pack_t			*pak;
 	int				i;
 
-	if( index )
+	if (index)
 		*index = -1;
 
 	// search through the path, one element at a time
@@ -228,10 +228,8 @@ static searchpath_t *FS_FindFile(const char *filename, int *index, int flags)
 			{
 				if (!Q_strcasecmp (pak->files[i].name, filename))
 				{	// found it!
-					if( index )
+					if (index)
 						*index = i;
-
-					Com_DPrintf ("FS_FindFile: pack: %s : %s\n", pak->filename, filename);
 					return search;
 				}
 			}
@@ -242,12 +240,12 @@ static searchpath_t *FS_FindFile(const char *filename, int *index, int flags)
 			Com_sprintf (netpath, sizeof(netpath), "%s/%s", search->filename, filename);
 
 			if(RFS_FileExists (netpath))
-			{
-				Com_DPrintf ("FS_FindFile: %s\n", netpath);
 				return search;
-			}
 		}
 	}
+
+	Com_DPrintf ("FS_FindFile: not found %s\n", filename);
+
 	return NULL;
 }
 

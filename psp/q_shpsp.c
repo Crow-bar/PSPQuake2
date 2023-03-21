@@ -100,18 +100,22 @@ char *Sys_FindFirst (char *path, unsigned musthave, unsigned canhave)
 	if (fdir >= 0)
 		Sys_Error ("Sys_BeginFind without close");
 
-	strcpy(findbase, path);
+	// to lower case
+	strcpy (findbase, path);
+	strlwr (findbase);
 
-	if ((p = strrchr(findbase, '/')) != NULL) {
+	if ((p = strrchr(findbase, '/')) != NULL)
+	{
 		*p = 0;
 		strcpy(findpattern, p + 1);
-	} else
+	} 
+	else
 		strcpy(findpattern, "*");
 
 	if (strcmp(findpattern, "*.*") == 0)
 		strcpy(findpattern, "*");
 
-	fdir = sceIoDopen (path);
+	fdir = sceIoDopen (findbase);
 	if (fdir < 0)
 		return NULL;
 
@@ -120,6 +124,9 @@ char *Sys_FindFirst (char *path, unsigned musthave, unsigned canhave)
 		memset (&d, 0, sizeof(SceIoDirent));
 		if(!sceIoDread (fdir, &d))
 			break;
+
+		// to lower case
+		strlwr (d.d_name);
 
 		if (!*findpattern || glob_match(findpattern, d.d_name))
 		{
@@ -146,6 +153,9 @@ char *Sys_FindNext (unsigned musthave, unsigned canhave)
 		memset (&d, 0, sizeof(SceIoDirent));
 		if(!sceIoDread (fdir, &d))
 			break;
+
+		// to lower case
+		strlwr (d.d_name);
 
 		if (!*findpattern || glob_match(findpattern, d.d_name))
 		{
