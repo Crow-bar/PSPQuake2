@@ -545,6 +545,8 @@ void R_DrawAlphaSurfaces (void)
 			sceGuColor (GU_HCOLOR_4F(intens, intens, intens, 1.0));
 		if (s->flags & SURF_DRAWTURB)
 			EmitWaterPolys (s);
+		else if(s->texinfo->flags & SURF_FLOWING)			// PGM	9/16/98
+			DrawGLFlowingPoly (s);							// PGM
 		else
 			DrawGLPoly (s->polys);
 	}
