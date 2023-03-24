@@ -128,8 +128,16 @@ void Com_Printf (char *fmt, ...)
 	{
 		if (!logfile)
 		{
-			logfile = FS_FOpen ("qconsole.log",
-				FS_MODE_WRITE | FS_PATH_ROOTDIR | FS_FLAG_TEXT | FS_FLAG_FLUSH);
+			if (logfile_active->value > 2)
+			{
+				logfile = FS_FOpen ("qconsole.log",
+					FS_MODE_APPEND | FS_PATH_ROOTDIR | FS_FLAG_TEXT | FS_FLAG_FLUSH);
+			}
+			else
+			{
+				logfile = FS_FOpen ("qconsole.log",
+					FS_MODE_WRITE | FS_PATH_ROOTDIR | FS_FLAG_TEXT | FS_FLAG_FLUSH);
+			}
 		}
 		if (logfile)
 			FS_FPrintf (logfile, "%s", msg);
