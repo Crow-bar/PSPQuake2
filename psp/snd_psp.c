@@ -69,7 +69,7 @@ static void SNDDMA_CopySamples (byte *dst, int dstpos, int scale, byte *src, int
 {
 	int	i, j;
 
-	if (dstscale == 1 && srcwidth == 2)
+	if (scale == 1 && srcwidth == 2)
 	{
 		memcpy (&((short *)dst)[dstpos], &((short *)src)[srcpos], srcsamples * 2);
 	}
