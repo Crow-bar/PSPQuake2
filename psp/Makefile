@@ -7,6 +7,9 @@ DEBUG := 0
 REF := soft
 GAME := base
 
+USE_VAUDIO := 0
+USE_CDMP3 := 0
+
 TARGET           = $(BUILDDIR)/PSPQuake2
 EXTRA_TARGETS    = $(BUILDDIR)/EBOOT.PBP
 
@@ -53,7 +56,13 @@ DEBUG_CFLAGS=$(BASE_CFLAGS) -g
 
 #LDFLAGS = -lm
 
-LIBS = -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspgum_vfpu -lpspvfpu -lpspgu -lpspdmac -lpspaudio -lm
+LIBS = -lpspwlan -lpspnet_adhoc -lpspnet_adhocctl -lpspgum_vfpu -lpspvfpu -lpspgu -lpspdmac -lm
+
+ifeq ($(USE_VAUDIO), 1)
+LIBS += -lpspvaudio
+else
+LIBS += -lpspaudio
+endif
 
 #############################################################################
 # SETUP AND BUILD
@@ -135,15 +144,24 @@ QUAKE2_OBJS = \
 	$(PSP_DIR)/in_psp.o \
 	$(PSP_DIR)/vid_psp.o \
 	$(PSP_DIR)/vid_menu.o \
-	$(PSP_DIR)/snd_psp.o \
 	$(PSP_DIR)/net_psp.o \
 	$(PSP_DIR)/q_shpsp.o \
 	$(PSP_DIR)/glob.o \
 	\
-	$(NULL_DIR)/cd_null.o \
-	\
 	$(GAME_DIR)/q_shared.o \
 	$(COMMON_DIR)/pmove.o
+
+ifeq ($(USE_VAUDIO), 1)
+QUAKE2_OBJS += $(PSP_DIR)/snd_psp_vaudio.o
+else
+QUAKE2_OBJS += $(PSP_DIR)/snd_psp.o
+endif
+
+ifeq ($(USE_CDMP3), 1)
+QUAKE2_OBJS += $(PSP_DIR)/cd_mp3.o
+else
+QUAKE2_OBJS += $(NULL_DIR)/cd_null.o
+endif
 
 $(BUILDDIR)/quake2.o: $(QUAKE2_OBJS)
 	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
