@@ -3,7 +3,7 @@ ifeq ($(PSPSDK),)
 $(error PSPSDK wasn't set)
 endif
 
-DEBUG := 0
+BUILD := debug
 REF := soft
 GAME := base
 
@@ -35,6 +35,8 @@ SRCDIR=..
 BUILD_DEBUG_DIR   = debug
 BUILD_RELEASE_DIR = release
 
+INSTALL_DIR       = dist
+
 CLIENT_DIR        = $(BUILDDIR)/client
 SERVER_DIR        = $(BUILDDIR)/server
 REF_SOFT_DIR      = $(BUILDDIR)/ref_soft
@@ -46,13 +48,13 @@ GAME_DIR          = $(BUILDDIR)/game
 CTF_DIR           = $(BUILDDIR)/ctf
 XATRIX_DIR        = $(BUILDDIR)/xatrix
 
-BASE_CFLAGS = -MD -g -G0 -Dstricmp=strcasecmp -DREF_HARD_LINKED -DGAME_HARD_LINKED
+BASE_CFLAGS = -MD -G0 -Dstricmp=strcasecmp -DREF_HARD_LINKED -DGAME_HARD_LINKED
 
-RELEASE_CFLAGS = $(BASE_CFLAGS) -O3 \
+release_CFLAGS = $(BASE_CFLAGS) -O3 \
 	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \
 	-falign-jumps=2 -falign-functions=2
 
-DEBUG_CFLAGS=$(BASE_CFLAGS) -g
+debug_CFLAGS= -g $(BASE_CFLAGS)
 
 #LDFLAGS = -lm
 
@@ -64,27 +66,34 @@ else
 LIBS += -lpspaudio
 endif
 
+ifeq ($(USE_CDMP3), 1)
+LIBS += -lpspmp3
+endif
+
 #############################################################################
 # SETUP AND BUILD
 #############################################################################
+VALID_BUILD = debug release
 VALID_REF = soft gu
 VALID_GAMES = base ctf xatrix
 
-ifeq ($(DEBUG), 1)
-BUILDDIR = $(BUILD_DEBUG_DIR)
-CFLAGS = $(RELEASE_CFLAGS)
-EXTRA_TARGETS += $(TARGET).sym
-else
-BUILDDIR = $(BUILD_RELEASE_DIR)
-CFLAGS = $(RELEASE_CFLAGS)
+ifeq (,$(filter $(BUILD),$(VALID_BUILD)))
+$(error Invalid build mode - [$(BUILD)]! Supported - [$(VALID_BUILD)])
 endif
 
 ifeq (,$(filter $(REF),$(VALID_REF)))
-$(error Invalid render - [$(REF)]! Supported - [$(VALID_REF)])
+$(error Invalid renderer - [$(REF)]! Supported - [$(VALID_REF)])
 endif
 
 ifeq (,$(filter $(GAME),$(VALID_GAMES)))
 $(error Invalid game - [$(GAME)]! Supported - [$(VALID_GAMES)])
+endif
+
+BUILDDIR = $(BUILD)
+CFLAGS = $($(BUILD)_CFLAGS)
+
+ifeq ($(BUILD), debug)
+EXTRA_TARGETS += $(TARGET).sym
 endif
 
 OBJS = \
@@ -93,6 +102,12 @@ OBJS = \
 	$(BUILDDIR)/$(GAME).o
 
 all: $(OBJS)
+
+install: $(EXTRA_TARGETS)
+	@echo "Installing..."
+	@mkdir -pv $(INSTALL_DIR)
+	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
+	@echo "Done."
 
 #############################################################################
 # CLIENT/SERVER
@@ -151,14 +166,17 @@ QUAKE2_OBJS = \
 	$(GAME_DIR)/q_shared.o \
 	$(COMMON_DIR)/pmove.o
 
+VAUDIO_OBJS = $(PSP_DIR)/snd_psp_vaudio.o
+CDMP3_OBJS = $(PSP_DIR)/cd_mp3.o
+
 ifeq ($(USE_VAUDIO), 1)
-QUAKE2_OBJS += $(PSP_DIR)/snd_psp_vaudio.o
+QUAKE2_OBJS += $(VAUDIO_OBJS)
 else
 QUAKE2_OBJS += $(PSP_DIR)/snd_psp.o
 endif
 
 ifeq ($(USE_CDMP3), 1)
-QUAKE2_OBJS += $(PSP_DIR)/cd_mp3.o
+QUAKE2_OBJS += $(CDMP3_OBJS)
 else
 QUAKE2_OBJS += $(NULL_DIR)/cd_null.o
 endif
@@ -386,14 +404,16 @@ $(BUILDDIR)/ref_gu.o: $(REF_GU_OBJS)
 clean-all: clean-debug clean-release
 
 clean-debug:
-	$(MAKE) clean2 DEBUG=1
+	$(MAKE) clean2 BUILD=debug
 
 clean-release:
-	$(MAKE) clean2 DEBUG=0
+	$(MAKE) clean2 BUILD=release
 
 clean2: clean
 	-rm -f \
 	$(QUAKE2_OBJS) \
+	$(VAUDIO_OBJS) \
+	$(CDMP3_OBJS) \
 	$(GAME_OBJS) \
 	$(CTF_OBJS) \
 	$(XATRIX_OBJS) \
@@ -401,6 +421,8 @@ clean2: clean
 	$(REF_GU_OBJS) \
 	$(OBJS) \
 	$(QUAKE2_OBJS:.o=.d) \
+	$(VAUDIO_OBJS:.o=.d) \
+	$(CDMP3_OBJS:.o=.d) \
 	$(GAME_OBJS:.o=.d) \
 	$(CTF_OBJS:.o=.d) \
 	$(XATRIX_OBJS:.o=.d) \
