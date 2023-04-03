@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -35,6 +35,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <ctype.h>
 #include <errno.h>
 
+#include <sys/select.h>
+
 #include "../qcommon/qcommon.h"
 
 
@@ -56,8 +58,8 @@ void IN_KeyUpdate(void);
 
 void Sys_ConsoleOutput (char *string)
 {
-	//if (nostdout && nostdout->value)
-	//	return;
+	if (nostdout && nostdout->value)
+		return;
 
 	fputs(string, stdout);
 }
@@ -75,8 +77,8 @@ void Sys_Printf (char *fmt, ...)
 	if (strlen(text) > sizeof(text))
 		Sys_Error("memory overwrite in Sys_Printf");
 
-	//if (nostdout && nostdout->value)
-	//	return;
+	if (nostdout && nostdout->value)
+		return;
 
 	for (p = (unsigned char *)text; *p; p++) {
 		*p &= 0x7f;
@@ -91,7 +93,7 @@ void Sys_Quit (void)
 {
 	CL_Shutdown ();
 	Qcommon_Shutdown ();
-	
+
 	sceKernelExitGame();
 }
 
@@ -101,7 +103,7 @@ void Sys_Init(void)
 }
 
 void Sys_Error (char *error, ...)
-{ 
+{
 	va_list argptr;
 	char    string[1024];
 
@@ -117,7 +119,7 @@ void Sys_Error (char *error, ...)
 }
 
 void Sys_Warn (char *warning, ...)
-{ 
+{
 	va_list argptr;
 	char    string[1024];
 
@@ -125,7 +127,7 @@ void Sys_Warn (char *warning, ...)
 	vsprintf (string,warning,argptr);
 	va_end (argptr);
 	fprintf(stderr, "Warning: %s", string);
-} 
+}
 
 /*
 ============
@@ -137,16 +139,85 @@ returns -1 if not present
 int Sys_FileTime (char *path)
 {
 	struct stat buf;
-	
+
 	if (stat (path, &buf) == -1)
 		return -1;
-	
+
 	return buf.st_mtime;
 }
 
+/*
+============
+Sys_ConsoleInput
+
+working with psplink in tty mode
+============
+*/
 char *Sys_ConsoleInput(void)
 {
+#ifdef USE_STDIN
+	int			ret;
+	SceInt64	result;
+	char		*outbuff;
+
+	static char buffer[2][512];
+	static int	buffind = 0;
+	static int	scefd = -1;
+
+	if (!stdin_active)
+		return NULL;
+
+	result = 0;
+	outbuff = NULL;
+
+	// stdin fd
+	if (scefd == -1)
+	{
+		scefd = sceKernelStdin ();
+		if (scefd < 0)
+		{
+			stdin_active = false;
+			printf("Sys_ConsoleInput: sceKernelStdin (0x%x)\n", scefd);
+			return NULL;
+		}
+
+		ret = sceIoReadAsync (scefd, &buffer[buffind], sizeof(buffer[0]) - 1);
+		if (ret < 0)
+		{
+			stdin_active = false;
+			printf("Sys_ConsoleInput: sceIoReadAsync (0x%x)\n", ret);
+			return NULL;
+		}
+	}
+
+	ret = sceIoPollAsync (scefd, &result);
+	if (ret == 0)
+	{
+		if (result > 1)
+		{
+			buffer[buffind][result - 1] = 0; // rip off the /n and terminate
+			outbuff = buffer[buffind];
+			buffind = !buffind;
+		}
+
+		ret = sceIoReadAsync (scefd, &buffer[buffind], sizeof(buffer[0]) - 1);
+		if (ret < 0)
+		{
+			stdin_active = false;
+			printf("Sys_ConsoleInput: sceIoReadAsync (0x%x)\n", ret);
+			return NULL;
+		}
+	}
+	else if (ret < 0)
+	{
+		stdin_active = false;
+		printf("Sys_ConsoleInput: sceIoPollAsync (0x%x)\n", ret);
+	}
+
+	return outbuff;
+#else
 	return NULL;
+#endif
 }
 
 /*****************************************************************************/
@@ -186,7 +257,7 @@ void Sys_SendKeyEvents (void)
 {
 	IN_KeyUpdate();
 
-	// grab frame time 
+	// grab frame time
 	sys_frame_time = Sys_Milliseconds();
 
 }
@@ -205,6 +276,8 @@ int main (int argc, char **argv)
 	pspSdkDisableFPUExceptions();
 
 	Qcommon_Init(argc, argv);
+
+	nostdout = Cvar_Get("nostdout", "0", 0);
 
 	oldtime = Sys_Milliseconds ();
 	while (1)

@@ -9,6 +9,7 @@ GAME := base
 
 USE_VAUDIO := 0
 USE_CDMP3 := 0
+USE_STDIN := 0
 
 TARGET           = $(BUILDDIR)/PSPQuake2
 EXTRA_TARGETS    = $(BUILDDIR)/EBOOT.PBP
@@ -54,7 +55,11 @@ release_CFLAGS = $(BASE_CFLAGS) -O3 \
 	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \
 	-falign-jumps=2 -falign-functions=2
 
-debug_CFLAGS= -g $(BASE_CFLAGS)
+debug_CFLAGS= -g $(BASE_CFLAGS) -DUSE_STDIN
+
+ifeq ($(USE_STDIN), 1)
+release_CFLAGS += -DUSE_STDIN
+endif
 
 #LDFLAGS = -lm
 
@@ -101,13 +106,21 @@ OBJS = \
 	$(BUILDDIR)/ref_$(REF).o \
 	$(BUILDDIR)/$(GAME).o
 
-all: $(OBJS)
+all: $(EXTRA_TARGETS) $(FINAL_TARGET)
 
-install: $(EXTRA_TARGETS)
+install: all
 	@echo "Installing..."
 	@mkdir -pv $(INSTALL_DIR)
 	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
 	@echo "Done."
+
+install-prx: all
+	@echo "Installing..."
+	@mkdir -pv $(INSTALL_DIR)
+	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
+	@cp -fv $(FINAL_TARGET) $(INSTALL_DIR)
+	@echo "Done."
+
 
 #############################################################################
 # CLIENT/SERVER
