@@ -44,6 +44,7 @@ REF_SOFT_DIR      = $(BUILDDIR)/ref_soft
 REF_GU_DIR        = $(BUILDDIR)/ref_gu
 COMMON_DIR        = $(BUILDDIR)/qcommon
 PSP_DIR           = $(BUILDDIR)/psp
+SHARED_DIR        = $(BUILDDIR)/shared
 NULL_DIR          = $(BUILDDIR)/null
 GAME_DIR          = $(BUILDDIR)/game
 CTF_DIR           = $(BUILDDIR)/ctf
@@ -176,7 +177,7 @@ QUAKE2_OBJS = \
 	$(PSP_DIR)/q_shpsp.o \
 	$(PSP_DIR)/glob.o \
 	\
-	$(GAME_DIR)/q_shared.o \
+	$(SHARED_DIR)/q_shared.o \
 	$(COMMON_DIR)/pmove.o
 
 VAUDIO_OBJS = $(PSP_DIR)/snd_psp_vaudio.o
@@ -250,7 +251,7 @@ GAME_OBJS = \
 	$(GAME_DIR)/p_trail.o \
 	$(GAME_DIR)/p_view.o \
 	$(GAME_DIR)/p_weapon.o
-#	$(GAME_DIR)/q_shared.o \
+#	$(SHARED_DIR)/q_shared.o \
 #	$(GAME_DIR)/m_flash.o
 
 $(BUILDDIR)/base.o: $(GAME_OBJS)
@@ -288,7 +289,7 @@ CTF_OBJS = \
 	$(CTF_DIR)/p_trail.o \
 	$(CTF_DIR)/p_view.o \
 	$(CTF_DIR)/p_weapon.o
-#	$(CTF_DIR)/q_shared.o
+#	$(SHARED_DIR)/q_shared.o
 
 $(BUILDDIR)/ctf.o: $(CTF_OBJS)
 	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
@@ -350,7 +351,7 @@ XATRIX_OBJS = \
 	$(XATRIX_DIR)/p_trail.o \
 	$(XATRIX_DIR)/p_view.o \
 	$(XATRIX_DIR)/p_weapon.o
-#	$(XATRIX_DIR)/q_shared.o
+#	$(SHARED_DIR)/q_shared.o
 
 $(BUILDDIR)/xatrix.o: $(XATRIX_OBJS)
 	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"

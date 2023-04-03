@@ -13,6 +13,7 @@
 * Звук, на выбор при сборке: audio, vaudio
 * Сетевая игра Infrastructure и Adhoc
 * MP3 проигрыватель
+* CTF игра
 
 
 ## Не выполнено:
@@ -22,7 +23,6 @@
 * Спящий режим
 * MIP-текстурирование в аппаратном рендеринге
 * Разделяемые игровые модули
-* Сборка ctf и других игр
 
 
 ## Проблемы:
@@ -44,14 +44,13 @@
 	GAME            (base, ctf) - Игра
 	USE_VAUDIO           (0, 1) - Вывод звука через vaudio
 	USE_CDMP3            (0, 1) - MP3 проигрыватель
+	USE_STDIN            (0, 1) - Ввод команд через tty режим PSPLink
 
 ### Пример:
 
 #### make:
 
 	make -j8 BUILD=release REF=gu USE_CDMP3=1
-
-> `GAME=ctf` на данный момент скорее всего завершится с ошибкой
 
 > Для сборки с параметром `USE_VAUDIO=1`, требуется библиотека [libpspvaudio](https://github.com/Crow-bar/libpspvaudio)
 
@@ -90,6 +89,7 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 * Sound, to choose from when assembling: audio, vaudio
 * Network game Infrastructure and Adhoc
 * MP3 player
+* CTF game
 
 
 ## Not done:
@@ -99,7 +99,6 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 * Sleep mode
 * MIP-texturing in hardware rendering
 * Shareable game modules
-* Build ctf and other games
 
 
 ## Problems:
@@ -116,19 +115,18 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 
 ### Parameters (first default):
 
-	BUILD      (debug, release) -  Build mode
+	BUILD      (debug, release) - Build mode
 	REF              (soft, gu) - Rendering: soft - software, gu - hardware
 	GAME            (base, ctf) - Game
 	USE_VAUDIO           (0, 1) - Audio output via vaudio
 	USE_CDMP3            (0, 1) - MP3 player
+	USE_STDIN            (0, 1) - Entering commands via tty mode PSPLink
 
 ### Example:
 
 #### make:
 
 	make -j8 BUILD=release REF=gu USE_CDMP3=1
-
-> `GAME=ctf` is likely to fail at the moment
 
 > To build with `USE_VAUDIO=1`, the [libpspvaudio](https://github.com/Crow-bar/libpspvaudio) library is required
 
