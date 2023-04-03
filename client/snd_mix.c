@@ -164,7 +164,7 @@ void S_TransferPaintBuffer(int endtime)
 	}
 
 
-	if (dma.samplebits == 16 && dma.channels == 2)
+	if (dma.width == 2 && dma.channels == 2)
 	{	// optimized case
 		S_TransferStereo16 (pbuf, endtime);
 	}
@@ -176,7 +176,7 @@ void S_TransferPaintBuffer(int endtime)
 		out_idx = paintedtime * dma.channels & out_mask;
 		step = 3 - dma.channels;
 
-		if (dma.samplebits == 16)
+		if (dma.width == 2)
 		{
 			short *out = (short *) pbuf;
 			while (count--)
@@ -191,7 +191,7 @@ void S_TransferPaintBuffer(int endtime)
 				out_idx = (out_idx + 1) & out_mask;
 			}
 		}
-		else if (dma.samplebits == 8)
+		else if (dma.width == 1)
 		{
 			unsigned char *out = (unsigned char *) pbuf;
 			while (count--)

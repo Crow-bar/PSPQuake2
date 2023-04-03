@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -28,65 +28,50 @@ byte *S_Alloc (int size);
 
 /*
 ================
-ResampleSfx
+S_Resample
 ================
 */
-void ResampleSfx (sfx_t *sfx, int inrate, int inwidth, byte *data)
+void S_Resample (const byte *src, int inrate, int inwidth, int insamples, byte *dst, int outrate, int outwidth)
 {
-	int		outcount;
+	int		outsamples;
 	int		srcsample;
 	float	stepscale;
 	int		i;
 	int		sample, samplefrac, fracstep;
-	sfxcache_t	*sc;
-	
-	sc = Cache_Check (&sfx->cache);
-	if (!sc)
-		return;
 
-	stepscale = (float)inrate / dma.speed;	// this is usually 0.5, 1, or 2
+	stepscale = (float)inrate / outrate;	// this is usually 0.5, 1, or 2
+	outsamples = insamples / stepscale;
 
-	outcount = sc->length / stepscale;
-	sc->length = outcount;
-	if (sc->loopstart != -1)
-		sc->loopstart = sc->loopstart / stepscale;
-
-	sc->speed = dma.speed;
-	if (s_loadas8bit->value)
-		sc->width = 1;
-	else
-		sc->width = inwidth;
-	sc->stereo = 0;
-
-// resample / decimate to the current source rate
-
-	if (stepscale == 1 && inwidth == 1 && sc->width == 1)
+	// resample / decimate to the current source rate
+	if (stepscale == 1 && inwidth == 1 && outwidth == 1)
 	{
-// fast special case
-		for (i=0 ; i<outcount ; i++)
-			((signed char *)sc->data)[i]
-			= (int)( (unsigned char)(data[i]) - 128);
+		// fast special case
+		for (i = 0; i < outsamples; i++)
+			((signed char *)dst)[i] = (int)((unsigned char)(src[i]) - 128);
 	}
 	else
 	{
-// general case
+		// general case
 		samplefrac = 0;
 		fracstep = stepscale*256;
-		for (i=0 ; i<outcount ; i++)
+		for (i = 0; i < outsamples; i++)
 		{
 			srcsample = samplefrac >> 8;
 			samplefrac += fracstep;
+
 			if (inwidth == 2)
-				sample = LittleShort ( ((short *)data)[srcsample] );
+				sample = LittleShort (((short *)src)[srcsample]);
 			else
-				sample = (int)( (unsigned char)(data[srcsample]) - 128) << 8;
-			if (sc->width == 2)
-				((short *)sc->data)[i] = sample;
+				sample = (int)((unsigned char)(src[srcsample]) - 128) << 8;
+
+			if (outwidth == 2)
+				((short *)dst)[i] = sample;
 			else
-				((signed char *)sc->data)[i] = sample >> 8;
+				((signed char *)dst)[i] = sample >> 8;
 		}
 	}
 }
+
 
 //=============================================================================
 
@@ -100,7 +85,7 @@ sfxcache_t *S_LoadSound (sfx_t *s)
     char	namebuffer[MAX_QPATH];
 	byte	*data;
 	wavinfo_t	info;
-	int		len;
+	int		outsamples;
 	float	stepscale;
 	sfxcache_t	*sc;
 	int		size;
@@ -143,22 +128,23 @@ sfxcache_t *S_LoadSound (sfx_t *s)
 		return NULL;
 	}
 
-	stepscale = (float)info.rate / dma.speed;	
-	len = info.samples / stepscale;
+	stepscale = (float)info.rate / dma.speed;
+	outsamples = info.samples / stepscale;
+	outsamples = outsamples * dma.width * info.channels;
 
-	len = len * info.width * info.channels;
-
-	sc = Cache_Alloc ( &s->cache, len + sizeof(sfxcache_t), s->name);
+	sc = Cache_Alloc ( &s->cache, outsamples + sizeof(sfxcache_t), s->name);
 	if (!sc)
 		return NULL;
-	
-	sc->length = info.samples;
-	sc->loopstart = info.loopstart;
-	sc->speed = info.rate;
-	sc->width = info.width;
-	sc->stereo = info.channels;
 
-	ResampleSfx (s, sc->speed, sc->width, data + info.dataofs);
+	sc->length = outsamples;
+	sc->loopstart = info.loopstart;
+	if (sc->loopstart != -1)
+		sc->loopstart = sc->loopstart / stepscale;
+	sc->speed = dma.speed;
+	sc->width = dma.width;
+	sc->stereo = 0;
+
+	S_Resample (data + info.dataofs, info.rate, info.width, info.samples, sc->data, dma.speed, dma.width);
 
 	return sc;
 }
@@ -212,7 +198,7 @@ void FindNextChunk(char *name)
 			data_p = NULL;
 			return;
 		}
-		
+
 		data_p += 4;
 		iff_chunk_len = GetLittleLong();
 		if (iff_chunk_len < 0)
@@ -239,7 +225,7 @@ void FindChunk(char *name)
 void DumpChunks(void)
 {
 	char	str[5];
-	
+
 	str[4] = 0;
 	data_p=iff_data;
 	do
@@ -268,7 +254,7 @@ wavinfo_t GetWavinfo (char *name, byte *wav, int wavlength)
 
 	if (!wav)
 		return info;
-		
+
 	iff_data = wav;
 	iff_end = wav + wavlength;
 
@@ -347,7 +333,7 @@ wavinfo_t GetWavinfo (char *name, byte *wav, int wavlength)
 		info.samples = samples;
 
 	info.dataofs = data_p - wav;
-	
+
 	return info;
 }
 

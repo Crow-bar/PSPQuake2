@@ -66,7 +66,7 @@ typedef struct
 	int			samples;				// mono samples in buffer
 	int			submission_chunk;		// don't mix less than this #
 	int			samplepos;				// in mono samples
-	int			samplebits;
+	int			width;
 	int			speed;
 	byte		*buffer;
 } dma_t;

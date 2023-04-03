@@ -178,14 +178,14 @@ qboolean SNDDMA_Init(void)
 	snd.buffer.ptr[1]       = &snd.buffer.ptr[0][snd.buffer.len];
 
 	if ((int)s_loadas8bit->value)
-		dma.samplebits = 8;
+		dma.width = 1;
 	else
-		dma.samplebits = 16;
+		dma.width = 2;
 
-	if (dma.samplebits != 16)
+	if (dma.width != 2)
 	{
-		Com_Printf ("Don't currently support %i-bit data. Forcing 16-bit.\n", dma.samplebits);
-		dma.samplebits = 16;
+		Com_Printf ("Don't currently support %i-bit data. Forcing 16-bit.\n", dma.width * 8);
+		dma.width = 2;
 		Cvar_SetValue ("s_loadas8bit", false);
 	}
 

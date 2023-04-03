@@ -1145,7 +1145,9 @@ CONTROLS MENU
 
 =======================================================================
 */
+#ifndef __psp__
 static cvar_t *win_noalttab;
+#endif
 extern cvar_t *in_joystick;
 
 static menuframework_s	s_options_menu;
@@ -1163,8 +1165,10 @@ static menuslider_s		s_options_sfxvolume_slider;
 static menuslider_s		s_options_cdvolume_slider;
 static menulist_s		s_options_joystick_box;
 static menulist_s		s_options_cdenable_box;
+#ifndef __psp__
 static menulist_s		s_options_quality_list;
 static menulist_s		s_options_compatibility_list;
+#endif
 static menulist_s		s_options_console_action;
 
 static void CrosshairFunc( void *unused )
@@ -1197,10 +1201,12 @@ static void MouseSpeedFunc( void *unused )
 	Cvar_SetValue( "sensitivity", s_options_sensitivity_slider.curvalue / 2.0F );
 }
 
+#ifndef __psp__
 static void NoAltTabFunc( void *unused )
 {
 	Cvar_SetValue( "win_noalttab", s_options_noalttab_box.curvalue );
 }
+#endif
 
 static float ClampCvar( float min, float max, float value )
 {
@@ -1214,7 +1220,9 @@ static void ControlsSetMenuItemValues( void )
 	s_options_sfxvolume_slider.curvalue		= Cvar_VariableValue( "s_volume" ) * 10;
 	s_options_cdvolume_slider.curvalue		= Cvar_VariableValue( "cd_volume" ) * 10;
 	s_options_cdenable_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
+#ifndef __psp__
 	s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
+#endif
 	s_options_sensitivity_slider.curvalue	= ( sensitivity->value ) * 2;
 
 	Cvar_SetValue( "cl_run", ClampCvar( 0, 1, cl_run->value ) );
@@ -1237,7 +1245,9 @@ static void ControlsSetMenuItemValues( void )
 	Cvar_SetValue( "in_joystick", ClampCvar( 0, 1, in_joystick->value ) );
 	s_options_joystick_box.curvalue		= in_joystick->value;
 
+#ifndef __psp__
 	s_options_noalttab_box.curvalue			= win_noalttab->value;
+#endif
 }
 
 static void ControlsResetDefaultsFunc( void *unused )
@@ -1298,6 +1308,7 @@ static void ConsoleFunc( void *unused )
 	cls.key_dest = key_console;
 }
 
+#ifndef __psp__
 static void UpdateSoundQualityFunc( void *unused )
 {
 	if ( s_options_quality_list.curvalue )
@@ -1323,15 +1334,19 @@ static void UpdateSoundQualityFunc( void *unused )
 
 	CL_Snd_Restart_f();
 }
+#endif
 
 void Options_MenuInit( void )
 {
+	int		position_y;
 	static const char *cd_music_items[] =
 	{
 		"disabled",
 		"enabled",
 		0
 	};
+
+#ifndef __psp__
 	static const char *quality_items[] =
 	{
 		"low", "high", 0
@@ -1341,6 +1356,7 @@ void Options_MenuInit( void )
 	{
 		"max compatibility", "max performance", 0
 	};
+#endif
 
 	static const char *yesno_names[] =
 	{
@@ -1358,7 +1374,9 @@ void Options_MenuInit( void )
 		0
 	};
 
+#ifndef __psp__
 	win_noalttab = Cvar_Get( "win_noalttab", "0", CVAR_ARCHIVE );
+#endif
 
 	/*
 	** configure controls menu and menu items
@@ -1367,27 +1385,33 @@ void Options_MenuInit( void )
 	s_options_menu.y = viddef.height / 2 - 58;
 	s_options_menu.nitems = 0;
 
+	position_y = 0;
+
 	s_options_sfxvolume_slider.generic.type	= MTYPE_SLIDER;
 	s_options_sfxvolume_slider.generic.x	= 0;
-	s_options_sfxvolume_slider.generic.y	= 0;
+	s_options_sfxvolume_slider.generic.y	= position_y;
 	s_options_sfxvolume_slider.generic.name	= "effects volume";
 	s_options_sfxvolume_slider.generic.callback	= UpdateVolumeFunc;
 	s_options_sfxvolume_slider.minvalue		= 0;
 	s_options_sfxvolume_slider.maxvalue		= 10;
 	s_options_sfxvolume_slider.curvalue		= Cvar_VariableValue( "s_volume" ) * 10;
 
+	position_y += 10;
+
 	s_options_cdvolume_slider.generic.type	= MTYPE_SLIDER;
 	s_options_cdvolume_slider.generic.x		= 0;
-	s_options_cdvolume_slider.generic.y		= 10;
+	s_options_cdvolume_slider.generic.y		= position_y;
 	s_options_cdvolume_slider.generic.name	= "music volume";
 	s_options_cdvolume_slider.generic.callback	= UpdateCDVolumeFunc;
 	s_options_cdvolume_slider.minvalue		= 0;
 	s_options_cdvolume_slider.maxvalue		= 10;
 	s_options_cdvolume_slider.curvalue		= Cvar_VariableValue( "cd_volume" ) * 10;
 
+	position_y += 10;
+
 	s_options_cdenable_box.generic.type		= MTYPE_SPINCONTROL;
 	s_options_cdenable_box.generic.x		= 0;
-	s_options_cdenable_box.generic.y		= 20;
+	s_options_cdenable_box.generic.y		= position_y;
 #ifdef __psp__
 	s_options_cdenable_box.generic.name		= "MP3 music";
 #else
@@ -1397,101 +1421,135 @@ void Options_MenuInit( void )
 	s_options_cdenable_box.itemnames		= cd_music_items;
 	s_options_cdenable_box.curvalue 		= !Cvar_VariableValue("cd_nocd");
 
+#ifndef __psp__
+	position_y += 10;
+
 	s_options_quality_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_quality_list.generic.x		= 0;
-	s_options_quality_list.generic.y		= 30;
+	s_options_quality_list.generic.y		= position_y;
 	s_options_quality_list.generic.name		= "sound quality";
 	s_options_quality_list.generic.callback = UpdateSoundQualityFunc;
 	s_options_quality_list.itemnames		= quality_items;
 	s_options_quality_list.curvalue			= !Cvar_VariableValue( "s_loadas8bit" );
 
+	position_y += 10;
+
 	s_options_compatibility_list.generic.type	= MTYPE_SPINCONTROL;
 	s_options_compatibility_list.generic.x		= 0;
-	s_options_compatibility_list.generic.y		= 40;
+	s_options_compatibility_list.generic.y		= position_y;
 	s_options_compatibility_list.generic.name	= "sound compatibility";
 	s_options_compatibility_list.generic.callback = UpdateSoundQualityFunc;
 	s_options_compatibility_list.itemnames		= compatibility_items;
 	s_options_compatibility_list.curvalue		= Cvar_VariableValue( "s_primary" );
+#endif
+
+	position_y += 20;
 
 	s_options_sensitivity_slider.generic.type	= MTYPE_SLIDER;
 	s_options_sensitivity_slider.generic.x		= 0;
-	s_options_sensitivity_slider.generic.y		= 60;
+	s_options_sensitivity_slider.generic.y		= position_y;
 	s_options_sensitivity_slider.generic.name	= "mouse speed";
 	s_options_sensitivity_slider.generic.callback = MouseSpeedFunc;
 	s_options_sensitivity_slider.minvalue		= 2;
 	s_options_sensitivity_slider.maxvalue		= 22;
 
+	position_y += 10;
+
 	s_options_alwaysrun_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_alwaysrun_box.generic.x	= 0;
-	s_options_alwaysrun_box.generic.y	= 70;
+	s_options_alwaysrun_box.generic.y	= position_y;
 	s_options_alwaysrun_box.generic.name	= "always run";
 	s_options_alwaysrun_box.generic.callback = AlwaysRunFunc;
 	s_options_alwaysrun_box.itemnames = yesno_names;
 
+	position_y += 10;
+
 	s_options_invertmouse_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_invertmouse_box.generic.x	= 0;
-	s_options_invertmouse_box.generic.y	= 80;
+	s_options_invertmouse_box.generic.y	= position_y;
 	s_options_invertmouse_box.generic.name	= "invert mouse";
 	s_options_invertmouse_box.generic.callback = InvertMouseFunc;
 	s_options_invertmouse_box.itemnames = yesno_names;
 
+	position_y += 10;
+
 	s_options_lookspring_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_lookspring_box.generic.x	= 0;
-	s_options_lookspring_box.generic.y	= 90;
+	s_options_lookspring_box.generic.y	= position_y;
 	s_options_lookspring_box.generic.name	= "lookspring";
 	s_options_lookspring_box.generic.callback = LookspringFunc;
 	s_options_lookspring_box.itemnames = yesno_names;
 
+	position_y += 10;
+
 	s_options_lookstrafe_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_lookstrafe_box.generic.x	= 0;
-	s_options_lookstrafe_box.generic.y	= 100;
+	s_options_lookstrafe_box.generic.y	= position_y;
 	s_options_lookstrafe_box.generic.name	= "lookstrafe";
 	s_options_lookstrafe_box.generic.callback = LookstrafeFunc;
 	s_options_lookstrafe_box.itemnames = yesno_names;
 
+	position_y += 10;
+
 	s_options_freelook_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_freelook_box.generic.x	= 0;
-	s_options_freelook_box.generic.y	= 110;
+	s_options_freelook_box.generic.y	= position_y;
 	s_options_freelook_box.generic.name	= "free look";
 	s_options_freelook_box.generic.callback = FreeLookFunc;
 	s_options_freelook_box.itemnames = yesno_names;
 
+	position_y += 10;
+
 	s_options_crosshair_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_crosshair_box.generic.x	= 0;
-	s_options_crosshair_box.generic.y	= 120;
+	s_options_crosshair_box.generic.y	= position_y;
 	s_options_crosshair_box.generic.name	= "crosshair";
 	s_options_crosshair_box.generic.callback = CrosshairFunc;
 	s_options_crosshair_box.itemnames = crosshair_names;
+
 /*
+#ifndef __psp__
+	position_y += 10;
+
 	s_options_noalttab_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_noalttab_box.generic.x	= 0;
-	s_options_noalttab_box.generic.y	= 110;
+	s_options_noalttab_box.generic.y	= position_y;
 	s_options_noalttab_box.generic.name	= "disable alt-tab";
 	s_options_noalttab_box.generic.callback = NoAltTabFunc;
 	s_options_noalttab_box.itemnames = yesno_names;
+#endif
 */
+
+	position_y += 10;
+
 	s_options_joystick_box.generic.type = MTYPE_SPINCONTROL;
 	s_options_joystick_box.generic.x	= 0;
-	s_options_joystick_box.generic.y	= 130;
+	s_options_joystick_box.generic.y	= position_y;
 	s_options_joystick_box.generic.name	= "use joystick";
 	s_options_joystick_box.generic.callback = JoystickFunc;
 	s_options_joystick_box.itemnames = yesno_names;
 
+	position_y += 20;
+
 	s_options_customize_options_action.generic.type	= MTYPE_ACTION;
 	s_options_customize_options_action.generic.x		= 0;
-	s_options_customize_options_action.generic.y		= 150;
+	s_options_customize_options_action.generic.y		= position_y;
 	s_options_customize_options_action.generic.name	= "customize controls";
 	s_options_customize_options_action.generic.callback = CustomizeControlsFunc;
 
+	position_y += 10;
+
 	s_options_defaults_action.generic.type	= MTYPE_ACTION;
 	s_options_defaults_action.generic.x		= 0;
-	s_options_defaults_action.generic.y		= 160;
+	s_options_defaults_action.generic.y		= position_y;
 	s_options_defaults_action.generic.name	= "reset defaults";
 	s_options_defaults_action.generic.callback = ControlsResetDefaultsFunc;
 
+	position_y += 10;
+
 	s_options_console_action.generic.type	= MTYPE_ACTION;
 	s_options_console_action.generic.x		= 0;
-	s_options_console_action.generic.y		= 170;
+	s_options_console_action.generic.y		= position_y;
 	s_options_console_action.generic.name	= "go to console";
 	s_options_console_action.generic.callback = ConsoleFunc;
 
@@ -1500,8 +1558,10 @@ void Options_MenuInit( void )
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sfxvolume_slider );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdvolume_slider );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_cdenable_box );
+#ifndef __psp__
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_quality_list );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_compatibility_list );
+#endif
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_sensitivity_slider );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_alwaysrun_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_invertmouse_box );

@@ -96,11 +96,10 @@ SNDDMA_MainThread
 static int SNDDMA_MainThread (SceSize args, void *argp)
 {
 	int	wrapped, remaining;
-	int	samplescale, samplesread, sampleswidth;
+	int	samplescale, samplesread;
 
 	samplescale = snd.buffer.samplerate / dma.speed;
 	samplesread = (snd.buffer.samples * snd.buffer.channels)  / samplescale;
-	sampleswidth = dma.samplebits / 8;
 
 	while (snd.flags & SND_FLAG_RUN)
 	{
@@ -111,7 +110,7 @@ static int SNDDMA_MainThread (SceSize args, void *argp)
 		if (wrapped < 0)
 		{
 			SNDDMA_CopySamples (snd.buffer.ptr[snd.buffer.current], 0, samplescale,
-								dma.buffer, dma.samplepos, samplesread, sampleswidth);
+								dma.buffer, dma.samplepos, samplesread, dma.width);
 			dma.samplepos += samplesread;
 		}
 		else
@@ -119,12 +118,12 @@ static int SNDDMA_MainThread (SceSize args, void *argp)
 			remaining = dma.samples - dma.samplepos;
 
 			SNDDMA_CopySamples (snd.buffer.ptr[snd.buffer.current], 0, samplescale,
-								dma.buffer, dma.samplepos, remaining, sampleswidth);
+								dma.buffer, dma.samplepos, remaining, dma.width);
 
 			if (wrapped > 0)
 			{
 				SNDDMA_CopySamples (snd.buffer.ptr[snd.buffer.current], remaining * samplescale, samplescale,
-									dma.buffer, 0, wrapped, sampleswidth);
+									dma.buffer, 0, wrapped, dma.width);
 			}
 			dma.samplepos = wrapped;
 		}
@@ -182,15 +181,15 @@ qboolean SNDDMA_Init(void)
 	}
 
 	if ((int)s_loadas8bit->value)
-		dma.samplebits = 8;
+		dma.width = 1;
 	else
-		dma.samplebits = 16;
+		dma.width = 2;
 
 	dma.channels            = snd.buffer.channels;
 	dma.samples             = SOUND_DMA_SAMPLES * PSP_OUTPUT_CHANNELS;
 	dma.samplepos           = 0;
 	dma.submission_chunk    = 1;
-	dma.buffer              = memalign(64, dma.samples * (dma.samplebits / 8));
+	dma.buffer              = memalign(64, dma.samples * dma.width);
 	if (!dma.buffer)
 	{
 		SNDDMA_Shutdown ();
@@ -198,7 +197,7 @@ qboolean SNDDMA_Init(void)
 	}
 
 	// clearing buffers
-	memset(dma.buffer, 0, dma.samples * (dma.samplebits / 8));
+	memset(dma.buffer, 0, dma.samples * dma.width);
 	memset(snd.buffer.ptr[0], 0, snd.buffer.len * 2);
 
 	// allocate and initialize a hardware output channel
