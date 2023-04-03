@@ -289,6 +289,12 @@ void CDAudio_Play (int track, qboolean looping)
 	if (mp3.track == track && (mp3.flags & MP3_FLAG_RES_MP3_FILE))
 		return;
 
+	if (track < 1 /*|| track > 99*/)
+	{
+		Com_DPrintf("CDAudio_Play: Bad track number %u.\n", track);
+		return;
+	}
+
 	CDAudio_Stop (); // stop previous
 
 	Com_sprintf (path, sizeof(path), "%s/music/Track%02d.mp3", FS_GetWriteDir(FS_PATH_GAMEDIR), track);
