@@ -169,6 +169,7 @@ typedef struct mleaf_s
 //
 // Whole model
 //
+typedef enum {nl_unreferenced, nl_needs_loaded, nl_present} needload_t;
 
 typedef enum {mod_bad, mod_brush, mod_sprite, mod_alias } modtype_t;
 
@@ -176,7 +177,7 @@ typedef struct model_s
 {
 	char		name[MAX_QPATH];
 
-	qboolean	needload;		// bmodels and sprites don't cache normally
+	needload_t	needload;		// bmodels and sprites don't cache normally
 
 	modtype_t	type;
 	int			numframes;

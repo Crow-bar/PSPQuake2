@@ -148,7 +148,17 @@ void Mod_Modellist_f (void)
 	{
 		if (!mod->name[0])
 			continue;
-		ri.Con_Printf (PRINT_ALL, "%s\n", mod->name);
+
+		ri.Con_Printf (PRINT_ALL, "%s", mod->name);
+
+		if (mod->needload == nl_unreferenced)
+			ri.Con_Printf (PRINT_ALL, " (xURx)");
+		else if (mod->needload == nl_needs_loaded)
+			ri.Con_Printf (PRINT_ALL, " (>NL<)");
+		else
+			ri.Con_Printf (PRINT_ALL, " (<PR>)");
+
+		ri.Con_Printf (PRINT_ALL, "\n");
 	}
 }
 
@@ -160,6 +170,9 @@ Mod_Init
 void Mod_Init (void)
 {
 	memset (mod_novis, 0xff, sizeof(mod_novis));
+	memset (mod_known, 0, sizeof(mod_known));
+
+	mod_numknown = 0;
 }
 
 /*
@@ -194,6 +207,7 @@ model_t *Mod_FindName (char *name)
 {
 	int		i;
 	model_t	*mod;
+	model_t	*avail;
 
 	if (!name[0])
 		ri.Sys_Error (ERR_DROP,"Mod_ForName: NULL name");
@@ -212,26 +226,41 @@ model_t *Mod_FindName (char *name)
 	//
 	// search the currently loaded models
 	//
-	for (i=0 , mod=mod_known ; i<mod_numknown ; i++, mod++)
-		if (!strcmp (mod->name, name) )
+	for (i = 0, mod = mod_known; i < mod_numknown; i++, mod++)
+		if (!strcmp (mod->name, name))
 			return mod;
 
 	//
 	// find a free model slot spot
 	//
-	for (i=0 , mod=mod_known ; i<mod_numknown ; i++, mod++)
+	for (i = 0, avail = NULL, mod = mod_known; i < mod_numknown; i++, mod++)
 	{
 		if (!mod->name[0])
-			break;	// free spot
+			break; // this is a valid spot
+
+		if (mod->needload == nl_unreferenced)
+			if (!avail || mod->type != mod_alias)
+				avail = mod;
 	}
 
 	if (i == mod_numknown)
 	{
 		if (mod_numknown == MAX_MOD_KNOWN)
-			ri.Sys_Error (ERR_DROP, "mod_numknown == MAX_MOD_KNOWN");
-		mod->needload = true;
+		{
+			if (avail)
+			{
+				mod = avail;
+				if (mod->type == mod_alias)
+					if (ri.Cache_Check (&mod->cache))
+						ri.Cache_Free (&mod->cache);
+			}
+			else
+				ri.Sys_Error (ERR_DROP, "mod_numknown == MAX_MOD_KNOWN");
+		}
+		mod->needload = nl_needs_loaded;
 		mod_numknown++;
 	}
+
 	strcpy (mod->name, name);
 
 	return mod;
@@ -246,18 +275,19 @@ Loads in a model for the given name
 */
 model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 {
-	void	*d, *buf;
+	void	*buf;
 
-	if (!mod->needload)
+	if (mod->type == mod_alias)
 	{
-		if (mod->type == mod_alias)
+		if (ri.Cache_Check (&mod->cache))
 		{
-			d = ri.Cache_Check (&mod->cache);
-			if (d)
-				return mod;
+			mod->needload = nl_present;
+			return mod;
 		}
-		else
-			return mod;		// not cached at all
+	}
+	else if (mod->needload == nl_present)
+	{
+		return mod;
 	}
 
 	//
@@ -284,7 +314,7 @@ model_t *Mod_LoadModel (model_t *mod, qboolean crash)
 	//
 
 	// call the apropriate loader
-	mod->needload = false;
+	mod->needload = nl_present;
 
 	switch (LittleLong(*(unsigned *)buf))
 	{
@@ -1175,24 +1205,6 @@ Specifies the model that will be used as the world
 */
 void R_BeginRegistration (char *model)
 {
-/*
-	char	fullname[MAX_QPATH];
-	cvar_t	*flushmap;
-
-	registration_sequence++;
-	r_oldviewcluster = -1;		// force markleafs
-
-	Com_sprintf (fullname, sizeof(fullname), "maps/%s.bsp", model);
-
-	// explicitly free the old map if different
-	// this guarantees that mod_known[0] is the world map
-	flushmap = ri.Cvar_Get ("flushmap", "0", 0);
-	if ( strcmp(mod_known[0].name, fullname) || flushmap->value)
-		Mod_Free (&mod_known[0]);
-	r_worldmodel = Mod_ForName(fullname, true);
-
-	r_viewcluster = -1;
-*/
 	char	fullname[MAX_QPATH];
 
 	r_oldviewcluster = -1;		// force markleafs
@@ -1216,34 +1228,18 @@ struct model_s *R_RegisterModel (char *name)
 	dmdl_t		*pheader;
 
 	mod = Mod_ForName (name, false);
-/*
 	if (mod)
 	{
-		mod->registration_sequence = registration_sequence;
-
-		// register any images used by the models
-		if (mod->type == mod_sprite)
+		if (mod->type == mod_alias)
 		{
-			sprout = (dsprite_t *)mod->extradata;
-			for (i=0 ; i<sprout->numframes ; i++)
-				mod->skins[i] = GL_FindImage (sprout->frames[i].name, it_sprite);
-		}
-		else if (mod->type == mod_alias)
-		{
-			pheader = (dmdl_t *)mod->extradata;
+			pheader = (dmdl_t *)Mod_Extradata (mod);
 			for (i=0 ; i<pheader->num_skins ; i++)
-				mod->skins[i] = GL_FindImage ((char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, it_skin);
+				mod->skins[i] = GL_FindImage ((char *)pheader + pheader->ofs_skins + i*MAX_SKINNAME, IMG_TYPE_SKIN);
 //PGM
 			mod->numframes = pheader->num_frames;
 //PGM
 		}
-		else if (mod->type == mod_brush)
-		{
-			for (i=0 ; i<mod->numtexinfo ; i++)
-				mod->texinfo[i].image->registration_sequence = registration_sequence;
-		}
 	}
-*/
 	return mod;
 }
 
@@ -1256,22 +1252,7 @@ R_EndRegistration
 */
 void R_EndRegistration (void)
 {
-/*
-	int		i;
-	model_t	*mod;
 
-	for (i=0, mod=mod_known ; i<mod_numknown ; i++, mod++)
-	{
-		if (!mod->name[0])
-			continue;
-		if (mod->registration_sequence != registration_sequence)
-		{	// don't need this model
-			Mod_Free (mod);
-		}
-	}
-
-	GL_FreeUnusedImages ();
-*/
 }
 
 /*
@@ -1302,33 +1283,12 @@ void Mod_Free (model_t *mod)
 	dsprite_t	*sprout;
 	dmdl_t		*pheader;
 
-	if(!mod/* || !mod->name[0]*/)
+	if (!mod)
 		return;
 
-	switch(mod->type)
-	{
-	case mod_brush:
-		//for(i = 0; i < mod->numtexinfo; i++)
-		//	GL_FreeImage(mod->texinfo[i].image);
-		break;
-	case mod_sprite:
-		//sprout = (dsprite_t *)mod->cache.data;
-		//for (i = 0; i < sprout->numframes; i++)
-		//	GL_FreeImage(mod->skins[i]);
-		break;
-	case mod_alias:
-		if (ri.Cache_Check (&mod->cache))
-			ri.Cache_Free (&mod->cache);
-
-		//pheader = (dmdl_t *)mod->extradata;
-		//for (i = 0; i < pheader->num_skins; i++)
-		//	GL_FreeImage(mod->skins[i]);
-		break;
-	default:
-		break;
-	}
-
-	memset (mod, 0, sizeof(*mod));
+	mod->needload = nl_unreferenced;
+	if (mod->type != mod_alias)
+		memset (mod, 0, sizeof(*mod));
 }
 
 /*
@@ -1343,6 +1303,4 @@ void Mod_FreeAll (void)
 
 	for (i=0 , mod=mod_known ; i<mod_numknown ; i++, mod++)
 		Mod_Free (mod);
-
-	mod_numknown = 0;
 }
