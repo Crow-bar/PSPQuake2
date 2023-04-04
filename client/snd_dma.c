@@ -185,6 +185,8 @@ void S_Shutdown(void)
 			continue;
 		if (Cache_Check (&sfx->cache))
 			Cache_Free (&sfx->cache);
+		if (sfx->truename)
+			Z_Free (sfx->truename);
 		memset (sfx, 0, sizeof(*sfx));
 	}
 
@@ -340,6 +342,8 @@ void S_EndRegistration (void)
 		{	// don't need this sound
 			if (Cache_Check (&sfx->cache)) // it is possible to have a leftover
 				Cache_Free (&sfx->cache); // from a server that didn't finish loading
+			if (sfx->truename)
+				Z_Free (sfx->truename);
 			memset (sfx, 0, sizeof(*sfx));
 		}
 	}
