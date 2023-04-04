@@ -83,6 +83,7 @@ void Z_ClearZone (memzone_t *zone, int size)
 	zone->blocklist.id = 0;
 	zone->blocklist.size = 0;
 	zone->rover = block;
+	zone->size = size;
 
 	block->prev = block->next = &zone->blocklist;
 	block->tag = 0;			// free block
