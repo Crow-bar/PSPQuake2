@@ -50,7 +50,10 @@ GAME_DIR          = $(BUILDDIR)/game
 CTF_DIR           = $(BUILDDIR)/ctf
 XATRIX_DIR        = $(BUILDDIR)/xatrix
 
-BASE_CFLAGS = -MD -G0 -Dstricmp=strcasecmp -DREF_HARD_LINKED -DGAME_HARD_LINKED
+STLINK_CFLAGS = -DREF_HARD_LINKED -DGAME_HARD_LINKED
+HASH_CFLAGS = -DUSE_HASH_FOR_TEXTURES -DUSE_HASH_FOR_SFX
+
+BASE_CFLAGS = -MD -G0 -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS)
 
 release_CFLAGS = $(BASE_CFLAGS) -O3 \
 	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \

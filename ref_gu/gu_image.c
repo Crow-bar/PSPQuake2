@@ -26,6 +26,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define TEXTURE_SIZE_MIN	1
 
 image_t		gltextures[MAX_GLTEXTURES];
+#ifdef USE_HASH_FOR_TEXTURES
+image_t		*gltextures_hash[MAX_GLTEXTURES_HASH];
+#endif
 int			numgltextures;
 int			base_textureid;		// gltextures[i] = base_textureid+i
 
@@ -101,11 +104,18 @@ void	GL_ImageList_f (void)
 	int		i;
 	image_t	*image;
 	size_t	totalr, totalvr;
+	int		hcollisions;
 
 	ri.Con_Printf (PRINT_ALL, "------------------\n");
 	totalr = totalvr = 0;
+	hcollisions = 0;
 
+#ifdef USE_HASH_FOR_TEXTURES
+	for (i = 0; i < MAX_GLTEXTURES_HASH; i++) // order by hashkey
+	for (image = gltextures_hash[i]; image != NULL; image = image->nexthash)
+#else
 	for (i=0, image=gltextures ; i<numgltextures ; i++, image++)
+#endif
 	{
 		if (image->texnum < 0)
 			continue;
@@ -114,6 +124,16 @@ void	GL_ImageList_f (void)
 			totalvr += image->size;
 		else
 			totalr += image->size;
+
+#ifdef USE_HASH_FOR_TEXTURES
+		if (image != gltextures_hash[i])
+		{
+			hcollisions++;
+			ri.Con_Printf (PRINT_ALL, "\x01[%4i] ", i);
+		}
+		else
+			ri.Con_Printf (PRINT_ALL, "[%4i] ", i);
+#endif
 
 		switch (image->flags & IMG_TYPE_MASK)
 		{
@@ -176,6 +196,9 @@ void	GL_ImageList_f (void)
 	}
 	ri.Con_Printf (PRINT_ALL, "Total ram used %i\n", totalr);
 	ri.Con_Printf (PRINT_ALL, "Total vram used %i\n", totalvr);
+#ifdef USE_HASH_FOR_TEXTURES
+	ri.Con_Printf (PRINT_ALL, "Total hash collisions: %i\n", hcollisions);
+#endif
 }
 
 
@@ -1275,6 +1298,13 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, int flags)
 	image->flags = flags;
 	image->texnum = index;
 
+#ifdef USE_HASH_FOR_TEXTURES
+	// add to hash
+	image->hashkey = Com_StringHash (name, MAX_GLTEXTURES_HASH);
+	image->nexthash = gltextures_hash[image->hashkey];
+	gltextures_hash[image->hashkey] = image;
+#endif
+
 	if (IMG_IS_SKIN(image) && IMG_IS_IND(image))
 		R_FloodFillSkin(pic, width, height);
 
@@ -1286,6 +1316,8 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, int flags)
 	}
 	else
 		GL_UploadTexture (image, pic, width, height);
+
+
 
 	return image;
 }
@@ -1335,6 +1367,7 @@ image_t	*GL_FindImage (char *name, int flags)
 	int		i, len;
 	byte	*pic, *palette;
 	int		width, height;
+	uint	hashkey;
 
 	if (!name)
 		return NULL;	//	ri.Sys_Error (ERR_DROP, "GL_FindImage: NULL name");
@@ -1343,13 +1376,15 @@ image_t	*GL_FindImage (char *name, int flags)
 		return NULL;	//	ri.Sys_Error (ERR_DROP, "GL_FindImage: bad name: %s", name);
 
 	// look for it
+#ifdef USE_HASH_FOR_TEXTURES
+	hashkey = Com_StringHash (name, MAX_GLTEXTURES_HASH);
+	for (image = gltextures_hash[hashkey]; image != NULL; image = image->nexthash)
+#else
 	for (i=0, image=gltextures ; i<numgltextures ; i++,image++)
+#endif
 	{
-		if (!strcmp(name, image->name))
-		{
-			//image->registration_sequence = registration_sequence;
+		if (!stricmp(name, image->name))
 			return image;
-		}
 	}
 
 	//
@@ -1406,6 +1441,20 @@ GL_FreeImage
 */
 void GL_FreeImage (image_t *image)
 {
+#ifdef USE_HASH_FOR_TEXTURES
+	// remove from hash
+	image_t	**prev;
+
+	for (prev = &gltextures_hash[image->hashkey]; *prev != NULL; prev = &(*prev)->nexthash)
+	{
+		if(*prev == image)
+		{
+			*prev = image->nexthash;
+			break;
+		}
+	}
+#endif
+
 	// free it
 	if(image->data)
 	{
@@ -1537,6 +1586,9 @@ GL_InitImages
 void	GL_InitImages (void)
 {
 	memset (gltextures, 0, sizeof(gltextures));
+#ifdef USE_HASH_FOR_TEXTURES
+	memset (gltextures_hash, 0, sizeof(gltextures_hash));
+#endif
 
 	// init intensity conversions
 	intensity = ri.Cvar_Get ("intensity", "2", 0);

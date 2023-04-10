@@ -1167,6 +1167,33 @@ void Com_PageInMemory (byte *buffer, int size)
 }
 
 
+/*
+===============
+Com_StringHash
+
+case insensitive
+===============
+*/
+unsigned int Com_StringHash (const char *str, int hashmax)
+{
+	unsigned int hashkey;
+	int	c;
+
+#if 0
+	// sdbm
+	hashkey = 0;
+	while (c = *str++)
+		hashkey = tolower (c) + (hashkey << 6) + (hashkey << 16) - hashkey;
+#else
+	// djb2
+	hashkey = 5381;
+
+	while (c = *str++)
+		hashkey = ((hashkey << 5) + hashkey) + tolower (c); /* hash * 33 + c */
+#endif
+
+	return (hashkey % hashmax);
+}
 
 /*
 ============================================================================

@@ -115,9 +115,7 @@ typedef struct image_s
 	short		uplwidth, uplheight;	// after power of two and picmip
 
 	byte		*data;
-#ifdef TEXTURE_PKT_MODE
-	extgu_pkt_t	*pkt;
-#endif
+
 	int			format;
 	uint		flags;
 
@@ -127,11 +125,17 @@ typedef struct image_s
 
 	size_t		size;
 	byte		bpp;
+
+#ifdef USE_HASH_FOR_TEXTURES
+	uint		hashkey;
+	struct image_s		*nexthash;
+#endif
 } image_t;
 
 
-#define	MAX_GLTEXTURES	1024
-#define	MAX_LIGHTMAPS	128
+#define	MAX_GLTEXTURES		1024
+#define	MAX_GLTEXTURES_HASH	(MAX_GLTEXTURES >> 2)
+#define	MAX_LIGHTMAPS		128
 //===================================================================
 
 typedef enum

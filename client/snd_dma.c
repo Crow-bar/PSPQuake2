@@ -27,6 +27,8 @@ void S_SoundList(void);
 void S_Update_();
 void S_StopAllSounds(void);
 
+void S_FreeSound (sfx_t *sfx);
+
 
 // =======================================================================
 // Internal sound data & structures
@@ -60,8 +62,12 @@ int   		paintedtime; 	// sample PAIRS
 // than could actually be referenced during gameplay,
 // because we don't want to free anything until we are
 // sure we won't need it.
-#define		MAX_SFX		(MAX_SOUNDS*2)
+#define		MAX_SFX			(MAX_SOUNDS * 2)
+#define		MAX_SFX_HASH	(MAX_SFX >> 2)
 sfx_t		known_sfx[MAX_SFX];
+#ifdef USE_HASH_FOR_SFX
+sfx_t		*known_sfx_hash[MAX_SFX_HASH];
+#endif
 int			num_sfx;
 
 #define		MAX_PLAYSOUNDS	128
@@ -117,6 +123,9 @@ void S_Init (void)
 {
 	cvar_t	*cv;
 
+	if (sound_started)
+		return;
+
 	Com_Printf("\n------- sound initialization -------\n");
 
 	cv = Cvar_Get ("s_initsound", "1", 0);
@@ -124,6 +133,11 @@ void S_Init (void)
 		Com_Printf ("not initializing.\n");
 	else
 	{
+		memset (known_sfx, 0, sizeof(known_sfx));
+#ifdef USE_HASH_FOR_SFX
+		memset (known_sfx_hash, 0, sizeof(known_sfx_hash));
+#endif
+
 		s_volume = Cvar_Get ("s_volume", "0.7", CVAR_ARCHIVE);
 		s_khz = Cvar_Get ("s_khz", "11", CVAR_ARCHIVE);
 		s_loadas8bit = Cvar_Get ("s_loadas8bit", "1", CVAR_ARCHIVE);
@@ -183,11 +197,7 @@ void S_Shutdown(void)
 	{
 		if (!sfx->name[0])
 			continue;
-		if (Cache_Check (&sfx->cache))
-			Cache_Free (&sfx->cache);
-		if (sfx->truename)
-			Z_Free (sfx->truename);
-		memset (sfx, 0, sizeof(*sfx));
+		S_FreeSound (sfx);
 	}
 
 	num_sfx = 0;
@@ -208,6 +218,7 @@ sfx_t *S_FindName (char *name, qboolean create)
 {
 	int		i;
 	sfx_t	*sfx;
+	uint	hashkey;
 
 	if (!name)
 		Com_Error (ERR_FATAL, "S_FindName: NULL\n");
@@ -218,20 +229,23 @@ sfx_t *S_FindName (char *name, qboolean create)
 		Com_Error (ERR_FATAL, "Sound name too long: %s", name);
 
 	// see if already loaded
-	for (i=0 ; i < num_sfx ; i++)
-		if (!strcmp(known_sfx[i].name, name))
-		{
-			return &known_sfx[i];
-		}
+#ifdef USE_HASH_FOR_SFX
+	hashkey = Com_StringHash (name, MAX_SFX_HASH);
+	for (sfx = known_sfx_hash[hashkey]; sfx != NULL; sfx = sfx->nexthash)
+#else
+	for (i = 0, sfx = known_sfx; i < num_sfx; i++, sfx++)
+#endif
+	{
+		if (!stricmp(name, sfx->name))
+			return sfx;
+	}
 
 	if (!create)
 		return NULL;
 
 	// find a free sfx
-	for (i=0 ; i < num_sfx ; i++)
-		if (!known_sfx[i].name[0])
-//			registration_sequence < s_registration_sequence)
-			break;
+	for (i = 0, sfx = known_sfx; i < num_sfx; i++, sfx++)
+		if (!sfx->name[0]) break;
 
 	if (i == num_sfx)
 	{
@@ -244,6 +258,13 @@ sfx_t *S_FindName (char *name, qboolean create)
 	memset (sfx, 0, sizeof(*sfx));
 	strcpy (sfx->name, name);
 	sfx->registration_sequence = s_registration_sequence;
+
+#ifdef USE_HASH_FOR_SFX
+	// add to hash
+	sfx->hashkey = Com_StringHash (name, MAX_SFX_HASH);
+	sfx->nexthash = known_sfx_hash[sfx->hashkey];
+	known_sfx_hash[sfx->hashkey] = sfx;
+#endif
 
 	return sfx;
 }
@@ -265,9 +286,8 @@ sfx_t *S_AliasName (char *aliasname, char *truename)
 	strcpy (s, truename);
 
 	// find a free sfx
-	for (i=0 ; i < num_sfx ; i++)
-		if (!known_sfx[i].name[0])
-			break;
+	for (i = 0, sfx = known_sfx; i < num_sfx; i++, sfx++)
+		if (!sfx->name[0]) break;
 
 	if (i == num_sfx)
 	{
@@ -282,9 +302,45 @@ sfx_t *S_AliasName (char *aliasname, char *truename)
 	sfx->registration_sequence = s_registration_sequence;
 	sfx->truename = s;
 
+#ifdef USE_HASH_FOR_SFX
+	// add to hash
+	sfx->hashkey = Com_StringHash (aliasname, MAX_SFX_HASH);
+	sfx->nexthash = known_sfx_hash[sfx->hashkey];
+	known_sfx_hash[sfx->hashkey] = sfx;
+#endif
+
 	return sfx;
 }
 
+/*
+==================
+S_FreeSound
+
+==================
+*/
+void S_FreeSound (sfx_t *sfx)
+{
+#ifdef USE_HASH_FOR_SFX
+	// remove from hash
+	sfx_t	**prev;
+
+	for (prev = &known_sfx_hash[sfx->hashkey]; *prev != NULL; prev = &(*prev)->nexthash)
+	{
+		if(*prev == sfx)
+		{
+			*prev = sfx->nexthash;
+			break;
+		}
+	}
+#endif
+
+	if (Cache_Check (&sfx->cache)) // it is possible to have a leftover
+		Cache_Free (&sfx->cache); // from a server that didn't finish loading
+	if (sfx->truename)
+		Z_Free (sfx->truename);
+
+	memset (sfx, 0, sizeof(*sfx));
+}
 
 /*
 =====================
@@ -338,13 +394,10 @@ void S_EndRegistration (void)
 	{
 		if (!sfx->name[0])
 			continue;
+
 		if (sfx->registration_sequence != s_registration_sequence)
 		{	// don't need this sound
-			if (Cache_Check (&sfx->cache)) // it is possible to have a leftover
-				Cache_Free (&sfx->cache); // from a server that didn't finish loading
-			if (sfx->truename)
-				Z_Free (sfx->truename);
-			memset (sfx, 0, sizeof(*sfx));
+			S_FreeSound (sfx);
 		}
 	}
 
@@ -1175,13 +1228,29 @@ void S_SoundList(void)
 	int		i;
 	sfx_t	*sfx;
 	sfxcache_t	*sc;
-	int		size, total;
+	int		size, total, hcollisions;
 
-	total = 0;
+	hcollisions = total = 0;
+#ifdef USE_HASH_FOR_SFX
+	for (i = 0; i < MAX_SFX_HASH; i++) // order by hashkey
+	for (sfx = known_sfx_hash[i]; sfx != NULL; sfx = sfx->nexthash)
+#else
 	for (sfx=known_sfx, i=0 ; i<num_sfx ; i++, sfx++)
+#endif
 	{
 		if (!sfx->registration_sequence)
 			continue;
+
+#ifdef USE_HASH_FOR_SFX
+		if (sfx != known_sfx_hash[i])
+		{
+			hcollisions++;
+			Com_Printf ("\x01[%4i] ", i);
+		}
+		else
+			Com_Printf ("[%4i] ", i);
+#endif
+
 		sc = Cache_Check (&sfx->cache);
 		if (sc)
 		{
@@ -1191,16 +1260,14 @@ void S_SoundList(void)
 				Com_Printf ("L");
 			else
 				Com_Printf (" ");
-			Com_Printf("(%2db) %6i : %s\n",sc->width*8,  size, sfx->name);
+			Com_Printf ("(%2db) %6i : %s\n",sc->width*8,  size, sfx->name);
 		}
 		else
-		{
-			if (sfx->name[0] == '*')
-				Com_Printf("  placeholder : %s\n", sfx->name);
-			else
-				Com_Printf("  not loaded  : %s\n", sfx->name);
-		}
+			Com_Printf ("  %s : %s\n", (sfx->name[0] == '*') ? "placeholder" : "not loaded ", sfx->name);
 	}
 	Com_Printf ("Total resident: %i\n", total);
+#ifdef USE_HASH_FOR_SFX
+	Com_Printf ("Total hash collisions: %i\n", hcollisions);
+#endif
 }
 
