@@ -23,6 +23,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "gu_local.h"
 
+extern	char	loadname[32];
+
 static vec3_t	modelorg;		// relative to viewpoint
 
 msurface_t	*r_alpha_surfaces;
@@ -1093,7 +1095,7 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 	//
 	// draw texture
 	//
-	poly = ri.Hunk_Alloc (sizeof(glpoly_t) + (lnumverts * 2 - 1) * sizeof(gu_vert_ftv_t));
+	poly = ri.Hunk_AllocName (sizeof(glpoly_t) + (lnumverts * 2 - 1) * sizeof(gu_vert_ftv_t), loadname);
 	poly->next = fa->polys;
 	poly->flags = fa->flags;
 	fa->polys = poly;

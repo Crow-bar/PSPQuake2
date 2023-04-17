@@ -23,6 +23,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "gu_local.h"
 
 extern	model_t	*loadmodel;
+extern	char	loadname[32];	// for hunk tags
 
 typedef struct
 {
@@ -130,7 +131,7 @@ void SubdividePolygon (int numverts, float *verts)
 	}
 
 	// add a point in the center to help keep warp valid
-	poly = ri.Hunk_Alloc (sizeof(glpoly_t) + ((numverts + 1) * sizeof(gu_vert_ftv_t)));
+	poly = ri.Hunk_AllocName (sizeof(glpoly_t) + ((numverts + 1) * sizeof(gu_vert_ftv_t)), loadname);
 	poly->next = warpface->polys;
 	warpface->polys = poly;
 	poly->numverts = numverts + 2;
