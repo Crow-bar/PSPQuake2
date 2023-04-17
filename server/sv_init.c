@@ -176,6 +176,12 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 	if (sv.demofile)
 		FS_FClose (sv.demofile);
 
+	// clear collision map data
+	CM_ClearMap();
+
+	// clear hunk
+	Com_ClearMemory ();
+
 	svs.spawncount++;		// any partially connected client will be
 							// restarted
 	sv.state = ss_dead;
@@ -293,14 +299,10 @@ void SV_InitGame (void)
 		// cause any connected clients to reconnect
 		SV_Shutdown ("Server restarted\n", true);
 	}
-	else
-	{
-		// make sure the client is down
-		CL_Drop ();
-		SCR_BeginLoadingPlaque ();
-	}
 
-	CL_Drop (); // FIXME: always drop on server restart
+	// make sure the client is down
+	CL_Drop ();
+	SCR_BeginLoadingPlaque ();
 
 	// get any latched variable changes (maxclients, etc)
 	Cvar_GetLatchedVars ();
@@ -347,10 +349,10 @@ void SV_InitGame (void)
 #endif
 	}
 
-	svs.spawncount = rand();
-	svs.clients = Hunk_AllocName (sizeof(client_t)*maxclients->value, "clients");
-	svs.num_client_entities = maxclients->value*UPDATE_BACKUP*64;
-	svs.client_entities = Hunk_AllocName (sizeof(entity_state_t)*svs.num_client_entities, "client_entities");
+	svs.spawncount = rand ();
+	svs.clients = Z_Malloc (sizeof(client_t) * maxclients->value);
+	svs.num_client_entities = maxclients->value * UPDATE_BACKUP * 64;
+	svs.client_entities = Z_Malloc (sizeof(entity_state_t) * svs.num_client_entities);
 
 	// init network stuff
 	NET_Config ( (maxclients->value > 1) );

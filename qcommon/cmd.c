@@ -120,7 +120,7 @@ void Cbuf_InsertText (char *text)
 	templen = cmd_text.cursize;
 	if (templen)
 	{
-		temp = Z_Malloc (templen);
+		temp = Z_SmallMalloc (templen);
 		memcpy (temp, cmd_text.data, templen);
 		SZ_Clear (&cmd_text);
 	}
@@ -311,7 +311,7 @@ qboolean Cbuf_AddLateCommands (void)
 	if (!s)
 		return false;
 		
-	text = Z_Malloc (s+1);
+	text = Z_SmallMalloc (s+1);
 	text[0] = 0;
 	for (i=1 ; i<argc ; i++)
 	{
@@ -321,7 +321,7 @@ qboolean Cbuf_AddLateCommands (void)
 	}
 	
 // pull out the commands
-	build = Z_Malloc (s+1);
+	build = Z_SmallMalloc (s+1);
 	build[0] = 0;
 	
 	for (i=0 ; i<s-1 ; i++)
@@ -450,7 +450,7 @@ void Cmd_Alias_f (void)
 
 	if (!a)
 	{
-		a = Z_Malloc (sizeof(cmdalias_t));
+		a = Z_SmallMalloc (sizeof(cmdalias_t));
 		a->next = cmd_alias;
 		cmd_alias = a;
 	}
@@ -668,7 +668,7 @@ void Cmd_TokenizeString (char *text, qboolean macroExpand)
 
 		if (cmd_argc < MAX_STRING_TOKENS)
 		{
-			cmd_argv[cmd_argc] = Z_Malloc (strlen(com_token)+1);
+			cmd_argv[cmd_argc] = Z_SmallMalloc (strlen(com_token)+1);
 			strcpy (cmd_argv[cmd_argc], com_token);
 			cmd_argc++;
 		}
@@ -703,7 +703,7 @@ void	Cmd_AddCommand (char *cmd_name, xcommand_t function)
 		}
 	}
 
-	cmd = Z_Malloc (sizeof(cmd_function_t));
+	cmd = Z_SmallMalloc (sizeof(cmd_function_t));
 	cmd->name = cmd_name;
 	cmd->function = function;
 	cmd->next = cmd_functions;

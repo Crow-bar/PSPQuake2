@@ -30,7 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #ifndef HUNKSIZE
 #ifdef __psp__
-#define HUNKSIZE	0xc00000	// 12MB
+#define HUNKSIZE	0xe00000	// 14MB
 #else
 #define HUNKSIZE	0x2000000	// 32MB
 #endif
@@ -778,7 +778,7 @@ void 		Com_Printf (char *fmt, ...);
 void 		Com_DPrintf (char *fmt, ...);
 void 		Com_Error (int code, char *fmt, ...);
 void 		Com_Quit (void);
-void		Com_ClearMemory (qboolean server);
+void		Com_ClearMemory (void);
 
 int			Com_ServerState (void);		// this should have just been a cvar...
 void		Com_SetServerState (int state);

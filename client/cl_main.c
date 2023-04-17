@@ -8,7 +8,7 @@ of the License, or (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 See the GNU General Public License for more details.
 
@@ -254,7 +254,7 @@ void CL_Record_f (void)
 			buf.cursize = 0;
 		}
 
-		MSG_WriteByte (&buf, svc_spawnbaseline);		
+		MSG_WriteByte (&buf, svc_spawnbaseline);
 		MSG_WriteDeltaEntity (&nullstate, &cl_entities[i].baseline, &buf, true, true);
 	}
 
@@ -349,7 +349,7 @@ void CL_ForwardToServer_f (void)
 		Com_Printf ("Can't \"%s\", not connected\n", Cmd_Argv(0));
 		return;
 	}
-	
+
 	// don't forward the first argument
 	if (Cmd_Argc() > 1)
 	{
@@ -494,9 +494,9 @@ void CL_Connect_f (void)
 	if (Cmd_Argc() != 2)
 	{
 		Com_Printf ("usage: connect <server>\n");
-		return;	
+		return;
 	}
-	
+
 	if (Com_ServerState ())
 	{	// if running a local server, kill it and reissue
 		SV_Shutdown (va("Server quit\n", msg), false);
@@ -577,7 +577,7 @@ void CL_Rcon_f (void)
 			return;
 		}
 	}
-	
+
 	NET_SendPacket (NS_CLIENT, strlen(message)+1, message, to);
 }
 
@@ -597,11 +597,6 @@ void CL_ClearState (void)
 	if (re.ClearRegistered)
 		re.ClearRegistered ();
 
-	if(!Com_ServerState ())
-	{
-		CM_ClearMap ();
-		Com_ClearMemory (false);
-	}
 // wipe the entire cl structure
 	memset (&cl, 0, sizeof(cl));
 	memset (&cl_entities, 0, sizeof(cl_entities));
@@ -628,7 +623,7 @@ void CL_Disconnect (void)
 	if (cl_timedemo && cl_timedemo->value)
 	{
 		int	time;
-		
+
 		time = Sys_Milliseconds () - cl.timedemo_start;
 		if (time > 0)
 			Com_Printf ("%i frames, %3.1f seconds: %3.1f fps\n", cl.timedemo_frames,
@@ -761,7 +756,7 @@ void CL_Reconnect_f (void)
 		Com_Printf ("reconnecting...\n");
 		cls.state = ca_connected;
 		MSG_WriteChar (&cls.netchan.message, clc_stringcmd);
-		MSG_WriteString (&cls.netchan.message, "new");		
+		MSG_WriteString (&cls.netchan.message, "new");
 		return;
 	}
 
@@ -871,7 +866,7 @@ void CL_Skins_f (void)
 	{
 		if (!cl.configstrings[CS_PLAYERSKINS+i][0])
 			continue;
-		Com_Printf ("client %i: %s\n", i, cl.configstrings[CS_PLAYERSKINS+i]); 
+		Com_Printf ("client %i: %s\n", i, cl.configstrings[CS_PLAYERSKINS+i]);
 		SCR_UpdateScreen ();
 		Sys_SendKeyEvents ();	// pump message loop
 		CL_ParseClientinfo (i);
@@ -890,7 +885,7 @@ void CL_ConnectionlessPacket (void)
 {
 	char	*s;
 	char	*c;
-	
+
 	MSG_BeginReading (&net_message);
 	MSG_ReadLong (&net_message);	// skip the -1
 
@@ -912,7 +907,7 @@ void CL_ConnectionlessPacket (void)
 		}
 		Netchan_Setup (NS_CLIENT, &cls.netchan, net_from, cls.quakePort);
 		MSG_WriteChar (&cls.netchan.message, clc_stringcmd);
-		MSG_WriteString (&cls.netchan.message, "new");	
+		MSG_WriteString (&cls.netchan.message, "new");
 		cls.state = ca_connected;
 		return;
 	}
@@ -1045,7 +1040,7 @@ void CL_ReadPackets (void)
 	}
 	else
 		cl.timeoutcount = 0;
-	
+
 }
 
 
@@ -1136,23 +1131,29 @@ void CL_RequestNextDownload (void)
 		precache_check = ENV_CNT;
 
 //ZOID
-	if (precache_check == CS_MODELS) { // confirm map
+	if (precache_check == CS_MODELS) // confirm map
+	{
 		precache_check = CS_MODELS+2; // 0 isn't used
 		if (allow_download_maps->value)
 			if (!CL_CheckOrDownloadFile(cl.configstrings[CS_MODELS+1]))
 				return; // started a download
 	}
-	if (precache_check >= CS_MODELS && precache_check < CS_MODELS+MAX_MODELS) {
-		if (allow_download_models->value) {
-			while (precache_check < CS_MODELS+MAX_MODELS &&
-				cl.configstrings[precache_check][0]) {
-				if (cl.configstrings[precache_check][0] == '*' ||
-					cl.configstrings[precache_check][0] == '#') {
+
+	if (precache_check >= CS_MODELS && precache_check < CS_MODELS+MAX_MODELS)
+	{
+		if (allow_download_models->value)
+		{
+			while (precache_check < CS_MODELS+MAX_MODELS && cl.configstrings[precache_check][0])
+			{
+				if (cl.configstrings[precache_check][0] == '*' || cl.configstrings[precache_check][0] == '#')
+				{
 					precache_check++;
 					continue;
 				}
-				if (precache_model_skin == 0) {
-					if (!CL_CheckOrDownloadFile(cl.configstrings[precache_check])) {
+				if (precache_model_skin == 0)
+				{
+					if (!CL_CheckOrDownloadFile(cl.configstrings[precache_check]))
+					{
 						precache_model_skin = 1;
 						return; // started a download
 					}
@@ -1160,58 +1161,64 @@ void CL_RequestNextDownload (void)
 				}
 
 				// checking for skins in the model
-				if (!precache_model) {
-
-					precache_model = FS_LoadFile (cl.configstrings[precache_check], NULL, FS_PATH_ALL);
-					if (!precache_model) {
+				if (!precache_model)
+				{
+					precache_model = FS_LoadFile (cl.configstrings[precache_check], NULL, FS_PATH_ALL | FS_FLAG_MTEMP);
+					if (!precache_model)
+					{
+						precache_model = 0;
 						precache_model_skin = 0;
 						precache_check++;
 						continue; // couldn't load it
 					}
-					if (LittleLong(*(unsigned *)precache_model) != IDALIASHEADER) {
+					if (LittleLong(*(unsigned *)precache_model) != IDALIASHEADER)
+					{
 						// not an alias model
-						FS_FreeFile(precache_model);
 						precache_model = 0;
 						precache_model_skin = 0;
 						precache_check++;
 						continue;
 					}
 					pheader = (dmdl_t *)precache_model;
-					if (LittleLong (pheader->version) != ALIAS_VERSION) {
-						precache_check++;
+					if (LittleLong (pheader->version) != ALIAS_VERSION)
+					{
+						precache_model = 0;
 						precache_model_skin = 0;
+						precache_check++;
 						continue; // couldn't load it
 					}
 				}
 
 				pheader = (dmdl_t *)precache_model;
 
-				while (precache_model_skin - 1 < LittleLong(pheader->num_skins)) {
+				while (precache_model_skin - 1 < LittleLong(pheader->num_skins))
+				{
 					if (!CL_CheckOrDownloadFile((char *)precache_model +
-						LittleLong(pheader->ofs_skins) + 
-						(precache_model_skin - 1)*MAX_SKINNAME)) {
+						LittleLong(pheader->ofs_skins) + (precache_model_skin - 1)*MAX_SKINNAME))
+					{
 						precache_model_skin++;
 						return; // started a download
 					}
 					precache_model_skin++;
 				}
-				if (precache_model) { 
-					FS_FreeFile(precache_model);
-					precache_model = 0;
-				}
+
+				precache_model = 0;
 				precache_model_skin = 0;
 				precache_check++;
 			}
 		}
 		precache_check = CS_SOUNDS;
 	}
-	if (precache_check >= CS_SOUNDS && precache_check < CS_SOUNDS+MAX_SOUNDS) { 
-		if (allow_download_sounds->value) {
+	if (precache_check >= CS_SOUNDS && precache_check < CS_SOUNDS+MAX_SOUNDS)
+	{
+		if (allow_download_sounds->value)
+		{
 			if (precache_check == CS_SOUNDS)
 				precache_check++; // zero is blank
-			while (precache_check < CS_SOUNDS+MAX_SOUNDS &&
-				cl.configstrings[precache_check][0]) {
-				if (cl.configstrings[precache_check][0] == '*') {
+			while (precache_check < CS_SOUNDS+MAX_SOUNDS && cl.configstrings[precache_check][0])
+			{
+				if (cl.configstrings[precache_check][0] == '*')
+				{
 					precache_check++;
 					continue;
 				}
@@ -1222,11 +1229,12 @@ void CL_RequestNextDownload (void)
 		}
 		precache_check = CS_IMAGES;
 	}
-	if (precache_check >= CS_IMAGES && precache_check < CS_IMAGES+MAX_IMAGES) {
+	if (precache_check >= CS_IMAGES && precache_check < CS_IMAGES+MAX_IMAGES)
+	{
 		if (precache_check == CS_IMAGES)
 			precache_check++; // zero is blank
-		while (precache_check < CS_IMAGES+MAX_IMAGES &&
-			cl.configstrings[precache_check][0]) {
+		while (precache_check < CS_IMAGES+MAX_IMAGES && cl.configstrings[precache_check][0])
+		{
 			Com_sprintf(fn, sizeof(fn), "pics/%s.pcx", cl.configstrings[precache_check++]);
 			if (!CL_CheckOrDownloadFile(fn))
 				return; // started a download
@@ -1236,16 +1244,20 @@ void CL_RequestNextDownload (void)
 	// skins are special, since a player has three things to download:
 	// model, weapon model and skin
 	// so precache_check is now *3
-	if (precache_check >= CS_PLAYERSKINS && precache_check < CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT) {
-		if (allow_download_players->value) {
-			while (precache_check < CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT) {
+	if (precache_check >= CS_PLAYERSKINS && precache_check < CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT)
+	{
+		if (allow_download_players->value)
+		{
+			while (precache_check < CS_PLAYERSKINS + MAX_CLIENTS * PLAYER_MULT)
+			{
 				int i, n;
 				char model[MAX_QPATH], skin[MAX_QPATH], *p;
 
 				i = (precache_check - CS_PLAYERSKINS)/PLAYER_MULT;
 				n = (precache_check - CS_PLAYERSKINS)%PLAYER_MULT;
 
-				if (!cl.configstrings[CS_PLAYERSKINS+i][0]) {
+				if (!cl.configstrings[CS_PLAYERSKINS+i][0])
+				{
 					precache_check = CS_PLAYERSKINS + (i + 1) * PLAYER_MULT;
 					continue;
 				}
@@ -1258,16 +1270,20 @@ void CL_RequestNextDownload (void)
 				p = strchr(model, '/');
 				if (!p)
 					p = strchr(model, '\\');
-				if (p) {
+				if (p)
+				{
 					*p++ = 0;
 					strcpy(skin, p);
-				} else
+				}
+				else
 					*skin = 0;
 
-				switch (n) {
+				switch (n)
+				{
 				case 0: // model
 					Com_sprintf(fn, sizeof(fn), "players/%s/tris.md2", model);
-					if (!CL_CheckOrDownloadFile(fn)) {
+					if (!CL_CheckOrDownloadFile(fn))
+					{
 						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 1;
 						return; // started a download
 					}
@@ -1276,7 +1292,8 @@ void CL_RequestNextDownload (void)
 
 				case 1: // weapon model
 					Com_sprintf(fn, sizeof(fn), "players/%s/weapon.md2", model);
-					if (!CL_CheckOrDownloadFile(fn)) {
+					if (!CL_CheckOrDownloadFile(fn))
+					{
 						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 2;
 						return; // started a download
 					}
@@ -1285,7 +1302,8 @@ void CL_RequestNextDownload (void)
 
 				case 2: // weapon skin
 					Com_sprintf(fn, sizeof(fn), "players/%s/weapon.pcx", model);
-					if (!CL_CheckOrDownloadFile(fn)) {
+					if (!CL_CheckOrDownloadFile(fn))
+					{
 						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 3;
 						return; // started a download
 					}
@@ -1294,7 +1312,8 @@ void CL_RequestNextDownload (void)
 
 				case 3: // skin
 					Com_sprintf(fn, sizeof(fn), "players/%s/%s.pcx", model, skin);
-					if (!CL_CheckOrDownloadFile(fn)) {
+					if (!CL_CheckOrDownloadFile(fn))
+					{
 						precache_check = CS_PLAYERSKINS + i * PLAYER_MULT + 4;
 						return; // started a download
 					}
@@ -1316,28 +1335,33 @@ void CL_RequestNextDownload (void)
 		precache_check = ENV_CNT;
 	}
 
-	if (precache_check == ENV_CNT) {
+	if (precache_check == ENV_CNT)
+	{
 		precache_check = ENV_CNT + 1;
 
 		CM_LoadMap (cl.configstrings[CS_MODELS+1], true, &map_checksum);
 
-		if (map_checksum != atoi(cl.configstrings[CS_MAPCHECKSUM])) {
+		if (map_checksum != atoi(cl.configstrings[CS_MAPCHECKSUM]))
+		{
 			Com_Error (ERR_DROP, "Local map version differs from server: %i != '%s'\n",
 				map_checksum, cl.configstrings[CS_MAPCHECKSUM]);
 			return;
 		}
 	}
 
-	if (precache_check > ENV_CNT && precache_check < TEXTURE_CNT) {
-		if (allow_download->value && allow_download_maps->value) {
-			while (precache_check < TEXTURE_CNT) {
+	if (precache_check > ENV_CNT && precache_check < TEXTURE_CNT)
+	{
+		if (allow_download->value && allow_download_maps->value)
+		{
+			while (precache_check < TEXTURE_CNT)
+			{
 				int n = precache_check++ - ENV_CNT - 1;
 
 				if (n & 1)
-					Com_sprintf(fn, sizeof(fn), "env/%s%s.pcx", 
+					Com_sprintf(fn, sizeof(fn), "env/%s%s.pcx",
 						cl.configstrings[CS_SKY], env_suf[n/2]);
 				else
-					Com_sprintf(fn, sizeof(fn), "env/%s%s.tga", 
+					Com_sprintf(fn, sizeof(fn), "env/%s%s.tga",
 						cl.configstrings[CS_SKY], env_suf[n/2]);
 				if (!CL_CheckOrDownloadFile(fn))
 					return; // started a download
@@ -1346,16 +1370,20 @@ void CL_RequestNextDownload (void)
 		precache_check = TEXTURE_CNT;
 	}
 
-	if (precache_check == TEXTURE_CNT) {
+	if (precache_check == TEXTURE_CNT)
+	{
 		precache_check = TEXTURE_CNT+1;
 		precache_tex = 0;
 	}
 
 	// confirm existance of textures, download any that don't exist
-	if (precache_check == TEXTURE_CNT+1) {
+	if (precache_check == TEXTURE_CNT+1)
+	{
 		mapsurface_t	*msurf = CM_MapSurfaces ();
-		if (allow_download->value && allow_download_maps->value) {
-			while (precache_tex < CM_NumTexInfo ()) {
+		if (allow_download->value && allow_download_maps->value)
+		{
+			while (precache_tex < CM_NumTexInfo ())
+			{
 				char fn[MAX_OSPATH];
 
 				sprintf(fn, "textures/%s.wal", msurf[precache_tex++].rname);
@@ -1624,7 +1652,7 @@ void CL_FixCvarCheats (void)
 	int			i;
 	cheatvar_t	*var;
 
-	if ( !strcmp(cl.configstrings[CS_MAXCLIENTS], "1") 
+	if ( !strcmp(cl.configstrings[CS_MAXCLIENTS], "1")
 		|| !cl.configstrings[CS_MAXCLIENTS][0] )
 		return;		// single player can cheat
 
@@ -1747,7 +1775,7 @@ void CL_Frame (int msec)
 
 	// update audio
 	S_Update (cl.refdef.vieworg, cl.v_forward, cl.v_right, cl.v_up);
-	
+
 	CDAudio_Update();
 
 	// advance local effects for next frame
@@ -1795,22 +1823,22 @@ void CL_Init (void)
 
 	// all archived variables will now be loaded
 
-	Con_Init ();	
+	Con_Init ();
 #if defined __linux__ || defined __sgi
-	S_Init ();	
+	S_Init ();
 	VID_Init ();
 #else
 	VID_Init ();
 	S_Init ();	// sound must be initialized after window is created
 #endif
-	
+
 	V_Init ();
-	
+
 	net_message.data = net_message_buffer;
 	net_message.maxsize = sizeof(net_message_buffer);
 
-	M_Init ();	
-	
+	M_Init ();
+
 	SCR_Init ();
 	cls.disable_screen = true;	// don't draw yet
 
@@ -1836,7 +1864,7 @@ to run quit through here before the final handoff to the sys code.
 void CL_Shutdown(void)
 {
 	static qboolean isdown = false;
-	
+
 	if (isdown)
 	{
 		printf ("recursive shutdown\n");
@@ -1844,7 +1872,7 @@ void CL_Shutdown(void)
 	}
 	isdown = true;
 
-	CL_WriteConfiguration (); 
+	CL_WriteConfiguration ();
 
 	CDAudio_Shutdown ();
 	S_Shutdown();

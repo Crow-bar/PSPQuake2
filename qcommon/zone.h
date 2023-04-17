@@ -83,12 +83,47 @@ Zone block
 
 */
 
+#define	TAG_FREE	0
+#define	TAG_GENERAL	1
+#define	TAG_SMALL	2
+
+//...
+#define	TAG_GAME	765
+#define	TAG_LEVEL	766
+
 void Memory_Init (int hunksize);
+
+#ifdef ZONE_DEBUG
+
+void Z_FreeDebug (void *ptr, char *fname, int fline);
+void Z_FreeTagsDebug (int tag, char *fname, int fline);
+void *Z_MallocDebug (int size, char *fname, int fline);			// returns 0 filled memory
+void *Z_SmallMallocDebug (int size, char *fname, int fline);			// returns 0 filled memory
+void *Z_TagMallocDebug (int size, int tag, char *fname, int fline);
+
+void Z_FreeGame (void *ptr);
+void Z_FreeTagsGame (int tag);
+void *Z_TagMallocGame (int size, int tag);
+
+#define	Z_Free(ptr)				Z_FreeDebug(ptr, __FILE__, __LINE__)
+#define	Z_FreeTags(tag)			Z_FreeTagsDebug(tag, __FILE__, __LINE__)
+#define	Z_Malloc(size)			Z_MallocDebug(size, __FILE__, __LINE__)
+#define	Z_SmallMalloc(size)		Z_SmallMallocDebug(size, __FILE__, __LINE__)
+#define	Z_TagMalloc(size, tag)	Z_TagMallocDebug(size, tag, __FILE__, __LINE__)
+
+#else
 
 void Z_Free (void *ptr);
 void Z_FreeTags (int tag);
 void *Z_Malloc (int size);			// returns 0 filled memory
+void *Z_SmallMalloc (int size);			// returns 0 filled memory
 void *Z_TagMalloc (int size, int tag);
+
+#define	Z_FreeGame				Z_Free
+#define	Z_FreeTagsGame			Z_FreeTags
+#define	Z_TagMallocGame			Z_TagMalloc
+
+#endif
 
 void Z_DumpHeap (void);
 void Z_CheckHeap (void);

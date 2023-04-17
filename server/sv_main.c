@@ -1047,11 +1047,12 @@ void SV_Shutdown (char *finalmsg, qboolean reconnect)
 	Com_SetServerState (sv.state);
 
 	// free server static data
+	if (svs.clients)
+		Z_Free (svs.clients);
+	if (svs.client_entities)
+		Z_Free (svs.client_entities);
 	if (svs.demofile)
 		FS_FClose (svs.demofile);
-
-	CM_ClearMap ();
-	Com_ClearMemory (true);
 
 	memset (&svs, 0, sizeof(svs));
 }

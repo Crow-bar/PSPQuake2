@@ -1034,7 +1034,7 @@ char *CopyString (char *in)
 {
 	char	*out;
 	
-	out = Z_Malloc (strlen(in)+1);
+	out = Z_SmallMalloc (strlen(in)+1);
 	strcpy (out, in);
 	return out;
 }
@@ -1284,9 +1284,9 @@ This clears all the memory used by both the client and server, but does
 not reinitialize anything.
 ================
 */
-void Com_ClearMemory (qboolean server)
+void Com_ClearMemory (void)
 {
-	Com_Printf ("Clearing memory %s\n", server ? "(SERVER)" : "(CLIENT)");
+	Com_Printf ("Clearing memory\n");
 
 	if (com_hunklevel)
 		Hunk_FreeToLowMark (com_hunklevel);

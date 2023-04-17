@@ -3545,7 +3545,11 @@ static menuseparator_s	s_player_rate_title;
 static menuaction_s		s_player_download_action;
 
 #define MAX_DISPLAYNAME 16
+#ifdef __psp__
+#define MAX_PLAYERMODELS 64
+#else
 #define MAX_PLAYERMODELS 1024
+#endif
 
 typedef struct
 {

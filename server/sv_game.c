@@ -320,7 +320,6 @@ Init the game subsystem for a new map
 ===============
 */
 void SCR_DebugGraph (float value, int color);
-
 void SV_InitGameProgs (void)
 {
 	game_import_t	import;
@@ -367,9 +366,9 @@ void SV_InitGameProgs (void)
 	import.WriteDir = PF_WriteDir;
 	import.WriteAngle = PF_WriteAngle;
 
-	import.TagMalloc = Z_TagMalloc;
-	import.TagFree = Z_Free;
-	import.FreeTags = Z_FreeTags;
+	import.TagMalloc = Z_TagMallocGame;
+	import.TagFree = Z_FreeGame;
+	import.FreeTags = Z_FreeTagsGame;
 
 	import.cvar = Cvar_Get;
 	import.cvar_set = Cvar_Set;

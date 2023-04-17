@@ -22,10 +22,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "qcommon.h"
 #include <malloc.h>
 
-#define	DYNAMIC_SIZE	0x180000	// 1.5MB
+#define	ZONE_SIZE_MAIN	(2 * 1024 * 1024)
+#define	ZONE_SIZE_SMALL	(256 * 1024)
 
 #define	ZONEID	0x1d4a11
 #define MINFRAGMENT	64
+
 
 typedef struct memblock_s
 {
@@ -34,6 +36,10 @@ typedef struct memblock_s
 	int     id;        		// should be ZONEID
 	struct memblock_s       *next, *prev;
 	int		pad;			// pad to 64 bit boundary
+#ifdef ZONE_DEBUG
+	char	*fname;
+	int		fline;
+#endif
 } memblock_t;
 
 typedef struct
@@ -61,10 +67,10 @@ all big things are allocated on the hunk.
 ==============================================================================
 */
 
-memzone_t	*mainzone;
+memzone_t	*smallzone, *mainzone;
 
 void Z_ClearZone (memzone_t *zone, int size);
-
+void Z_Print (memzone_t *zone, int type, int minsize);
 
 /*
 ========================
@@ -82,6 +88,10 @@ void Z_ClearZone (memzone_t *zone, int size)
 	zone->blocklist.tag = 1;	// in use block
 	zone->blocklist.id = 0;
 	zone->blocklist.size = 0;
+#ifdef ZONE_DEBUG
+	zone->blocklist.fname = NULL;
+	zone->blocklist.fline = 0;
+#endif
 	zone->rover = block;
 	zone->size = size;
 
@@ -89,6 +99,10 @@ void Z_ClearZone (memzone_t *zone, int size)
 	block->tag = 0;			// free block
 	block->id = ZONEID;
 	block->size = size - sizeof(memzone_t);
+#ifdef ZONE_DEBUG
+	block->fname = NULL;
+	block->fline = 0;
+#endif
 }
 
 
@@ -97,18 +111,36 @@ void Z_ClearZone (memzone_t *zone, int size)
 Z_Free
 ========================
 */
+#ifdef ZONE_DEBUG
+void Z_FreeDebug (void *ptr, char *fname, int fline)
+#else
 void Z_Free (void *ptr)
+#endif
 {
 	memblock_t	*block, *other;
+	memzone_t	*zone;
 
 	if (!ptr)
+#ifdef ZONE_DEBUG
+		Sys_Error ("Z_Free: NULL pointer %i:%s", fname, fline);
+#else
 		Sys_Error ("Z_Free: NULL pointer");
+#endif
 
 	block = (memblock_t *) ( (byte *)ptr - sizeof(memblock_t));
+#ifdef ZONE_DEBUG
+	if (block->id != ZONEID)
+		Sys_Error ("Z_Free: freed a pointer without ZONEID %s:%i", fname, fline);
+	if (block->tag == 0)
+		Sys_Error ("Z_Free: freed a freed pointer %s:%i", fname, fline);
+#else
 	if (block->id != ZONEID)
 		Sys_Error ("Z_Free: freed a pointer without ZONEID");
 	if (block->tag == 0)
 		Sys_Error ("Z_Free: freed a freed pointer");
+#endif
+
+	zone = (block->tag == TAG_SMALL || block->tag == TAG_LEVEL) ? smallzone : mainzone;
 
 	block->tag = 0;		// mark as free
 
@@ -118,8 +150,8 @@ void Z_Free (void *ptr)
 		other->size += block->size;
 		other->next = block->next;
 		other->next->prev = other;
-		if (block == mainzone->rover)
-			mainzone->rover = other;
+		//if (block == zone->rover)
+		//	zone->rover = other;
 		block = other;
 	}
 
@@ -129,9 +161,11 @@ void Z_Free (void *ptr)
 		block->size += other->size;
 		block->next = other->next;
 		block->next->prev = block;
-		if (other == mainzone->rover)
-			mainzone->rover = block;
+		//if (other == zone->rover)
+		//	zone->rover = block;
 	}
+
+	zone->rover = block;
 }
 
 
@@ -140,15 +174,26 @@ void Z_Free (void *ptr)
 Z_FreeTags
 ========================
 */
+#ifdef ZONE_DEBUG
+void Z_FreeTagsDebug (int tag, char *fname, int fline)
+#else
 void Z_FreeTags (int tag)
+#endif
 {
-	memblock_t *block, *next;
+	memblock_t	*block, *next;
+	memzone_t	*zone;
 
-	for (block = mainzone->blocklist.next; block != &mainzone->blocklist; block = next)
+	zone = (tag == TAG_SMALL || tag == TAG_LEVEL) ? smallzone : mainzone;
+
+	for (block = zone->blocklist.next; block != &zone->blocklist; block = next)
 	{
 		next = block->next;
 		if (block->tag == tag)
+#ifdef ZONE_DEBUG
+			Z_FreeDebug ((void *)(block + 1), fname, fline);
+#else
 			Z_Free ((void *)(block + 1));
+#endif
 	}
 }
 
@@ -158,28 +203,75 @@ void Z_FreeTags (int tag)
 Z_Malloc
 ========================
 */
+#ifdef ZONE_DEBUG
+void *Z_MallocDebug (int size, char *fname, int fline)
+#else
 void *Z_Malloc (int size)
+#endif
 {
 	void	*buf;
 
-	Z_CheckHeap ();	// DEBUG
+	//Z_CheckHeap ();	// DEBUG
+#ifdef ZONE_DEBUG
+	buf = Z_TagMallocDebug (size, TAG_GENERAL, fname, fline);
+#else
+	buf = Z_TagMalloc (size, TAG_GENERAL);
+#endif
 
-	buf = Z_TagMalloc (size, 1);
-	if (!buf)
-		Sys_Error ("Z_Malloc: failed on allocation of %i bytes",size);
 	memset (buf, 0, size);
 
 	return buf;
 }
 
 
-void *Z_TagMalloc (int size, int tag)
+/*
+========================
+Z_SmallMalloc
+========================
+*/
+#ifdef ZONE_DEBUG
+void *Z_SmallMallocDebug (int size, char *fname, int fline)
+#else
+void *Z_SmallMalloc (int size)
+#endif
 {
-	int		extra;
+	void	*buf;
+
+#ifdef ZONE_DEBUG
+	buf = Z_TagMallocDebug (size, TAG_SMALL, fname, fline);
+#else
+	buf = Z_TagMalloc (size, TAG_SMALL);
+#endif
+
+	memset (buf, 0, size);
+
+	return buf;
+}
+
+
+/*
+========================
+Z_TagMalloc
+========================
+*/
+#ifdef ZONE_DEBUG
+void *Z_TagMallocDebug (int size, int tag, char *fname, int fline)
+#else
+void *Z_TagMalloc (int size, int tag)
+#endif
+{
+	int			extra;
 	memblock_t	*start, *rover, *new, *base;
+	memzone_t	*zone;
 
 	if (!tag)
+#ifdef ZONE_DEBUG
+		Sys_Error ("Z_TagMalloc: tried to use a 0 tag %s:%i\n", fname, fline);
+#else
 		Sys_Error ("Z_TagMalloc: tried to use a 0 tag");
+#endif
+
+	zone = (tag == TAG_SMALL || tag == TAG_LEVEL) ? smallzone : mainzone;
 
 //
 // scan through the block list looking for the first free block
@@ -189,14 +281,23 @@ void *Z_TagMalloc (int size, int tag)
 	size += 4;					// space for memory trash tester
 	size = (size + 7) & ~7;		// align to 8-byte boundary
 
-	base = rover = mainzone->rover;
+
+	base = rover = zone->rover;
 	start = base->prev;
 
 	do
 	{
 		if (rover == start)	// scaned all the way around the list
+		{
 			//return NULL;
+#ifdef ZONE_DEBUG
+			Z_Print (zone, true, 0);
+			Sys_Error ("Z_Malloc: failed on allocation of %i bytes %s:%i", size, fname, fline);
+#else
 			Sys_Error ("Z_Malloc: failed on allocation of %i bytes", size);
+#endif
+
+		}
 		if (rover->tag)
 			base = rover = rover->next;
 		else
@@ -214,6 +315,10 @@ void *Z_TagMalloc (int size, int tag)
 		new->tag = 0;			// free block
 		new->prev = base;
 		new->id = ZONEID;
+#ifdef ZONE_DEBUG
+		new->fname = NULL;
+		new->fline = 0;
+#endif
 		new->next = base->next;
 		new->next->prev = new;
 		base->next = new;
@@ -221,8 +326,12 @@ void *Z_TagMalloc (int size, int tag)
 	}
 
 	base->tag = tag;				// no longer a free block
+#ifdef ZONE_DEBUG
+	base->fname = fname;
+	base->fline = fline;
+#endif
 
-	mainzone->rover = base->next;	// next allocation will start looking here
+	zone->rover = base->next;	// next allocation will start looking here
 
 	base->id = ZONEID;
 
@@ -238,31 +347,114 @@ void *Z_TagMalloc (int size, int tag)
 Z_Print
 ========================
 */
-void Z_Print (memzone_t *zone)
+void Z_Print (memzone_t *zone, int type, int minsize)
 {
 	memblock_t	*block;
+	int	total;
+	int largest;
 
-	Com_Printf ("zone size: %i  location: %p\n",mainzone->size,mainzone);
+	total = largest = 0;
 
-	for (block = zone->blocklist.next ; ; block = block->next)
+	Com_Printf ("Zone size: %i  Location: %p\n",zone->size, zone);
+
+	for (block = zone->blocklist.next; block != &zone->blocklist; block = block->next)
 	{
+#ifdef ZONE_DEBUG
+		if (block->next != &zone->blocklist)
+		{
+			if ( (byte *)block + block->size != (byte *)block->next)
+				Com_Printf ("ERROR: block size does not touch the next block\n");
+			if ( block->next->prev != block)
+				Com_Printf ("ERROR: next block doesn't have proper back link\n");
+			if (!block->tag && !block->next->tag)
+				Com_Printf ("ERROR: two consecutive free blocks\n");
+		}
+#endif
+
+		if (block->tag != 0)
+			total += block->size;
+		else if (largest < block->size)
+			largest = block->size;
+
+		if (block->size < minsize)
+			continue;
+
+		if (type == 0)
+			continue;
+
+		if (block->tag == 0 && type == 1)
+			continue;
+
+#ifdef ZONE_DEBUG
+		Com_Printf ("%sblock:%p    size:%7i    tag:%3i %s:%i\n",
+			(zone->rover == block) ? "*" : " ",
+			block, block->size, block->tag, block->fname, block->fline);
+#else
 		Com_Printf ("block:%p    size:%7i    tag:%3i\n",
 			block, block->size, block->tag);
-
-		if (block->next == &zone->blocklist)
-			break;			// all blocks have been hit
-		if ( (byte *)block + block->size != (byte *)block->next)
-			Com_Printf ("ERROR: block size does not touch the next block\n");
-		if ( block->next->prev != block)
-			Com_Printf ("ERROR: next block doesn't have proper back link\n");
-		if (!block->tag && !block->next->tag)
-			Com_Printf ("ERROR: two consecutive free blocks\n");
+#endif
 	}
+
+	Com_Printf ("Total used: %i\n", total);
+	Com_Printf ("Total free: %i\n", zone->size - total);
+	Com_Printf ("Max free: %i\n", largest);
 }
 
+
+/*
+========================
+Z_Print_f
+========================
+*/
 void Z_Print_f (void)
 {
-	Z_Print (mainzone);
+	char		*string;
+	int			i, len;
+	int			minsize;
+	int			type;
+	memzone_t	*zone;
+
+	minsize = 0;
+	type = 0;
+	zone = mainzone;
+
+	for (i = 0; i < Cmd_Argc (); i++)
+	{
+		string = Cmd_Argv (i);
+		len = strlen (string);
+
+		switch (string[0])
+		{
+		case 'z':
+		case 'Z':
+			if (len < 2)
+				break;
+			if (string[1] == 's')
+				zone = smallzone;
+			break;
+		case 't':
+		case 'T':
+			if (len < 2)
+				break;
+			type = atoi (&string[1]);
+			break;
+		case 'm':
+		case 'M':
+			if (len < 2)
+				break;
+			minsize = atoi (&string[1]);
+			break;
+		default:
+			Com_Printf ("USAGE: zonelist [options]\nOptions:\n");
+			Com_Printf (" z* - Zone\n       zm - mainzone\n       zs - smallzone\n");
+			Com_Printf (" t* - Print type\n       t0 - total\n       t1 - used\n       t3 - all\n");
+			Com_Printf (" m* - Minimum block size\n");
+			Com_Printf ("Example:\n zonelist zs t3 m48\n");
+			return;
+		}
+	}
+
+	Z_Print (zone, type, minsize);
 }
 
 
@@ -271,6 +463,7 @@ void Z_Print_f (void)
 Z_CheckHeap
 ========================
 */
+#if 0
 void Z_CheckHeap (void)
 {
 	memblock_t	*block;
@@ -287,6 +480,24 @@ void Z_CheckHeap (void)
 			Sys_Error ("Z_CheckHeap: two consecutive free blocks\n");
 	}
 }
+#endif
+
+#ifdef ZONE_DEBUG
+void Z_FreeGame (void *ptr)
+{
+	Z_FreeDebug (ptr, __FILE__, __LINE__);
+}
+
+void Z_FreeTagsGame (int tag)
+{
+	Z_FreeTagsDebug (tag, __FILE__, __LINE__);
+}
+
+void *Z_TagMallocGame (int size, int tag)
+{
+	return Z_TagMallocDebug (size, tag, __FILE__, __LINE__);
+}
+#endif
 
 //============================================================================
 
@@ -805,7 +1016,7 @@ void Cache_Print (void)
 {
 	cache_system_t	*cd;
 	int		totalsize;
-	
+
 	totalsize = 0;
 
 	for (cd = cache_head.next ; cd != &cache_head ; cd = cd->next)
@@ -954,7 +1165,7 @@ Memory_Init
 void Memory_Init (int hunksize)
 {
 	int p;
-	int zonesize = DYNAMIC_SIZE;
+	int zonesize = ZONE_SIZE_MAIN;
 
 	hunk_base = malloc(hunksize);
 	if(!hunk_base)
@@ -976,7 +1187,10 @@ void Memory_Init (int hunksize)
 	if(zonesize > hunk_size)
 		Sys_Error ("Memory_Init: zonesize > hunk_size");
 
-	mainzone = Hunk_AllocName (zonesize, "zone" );
+	smallzone = Hunk_AllocName (ZONE_SIZE_SMALL, "smallzone" );
+	Z_ClearZone (smallzone, ZONE_SIZE_SMALL);
+
+	mainzone = Hunk_AllocName (zonesize, "mainzone" );
 	Z_ClearZone (mainzone, zonesize);
 
 	Cmd_AddCommand ("flush", Cache_Flush);
