@@ -174,28 +174,106 @@ keyname_t keynames[] =
 
 ==============================================================================
 */
+static const char *completion_string;
+static char shortest_match[MAX_TOKEN_CHARS];
+static char match_count;
 
+/*
+===============
+FindMatches
+
+===============
+*/
+static void FindMatches (const char *s, const char *unused)
+{
+	int		i;
+
+	if (Q_strncasecmp (s, completion_string, strlen (completion_string)))
+		return;
+
+	match_count++;
+	if (match_count == 1)
+	{
+		strncpy (shortest_match, s, sizeof(shortest_match) - 1);
+		shortest_match[sizeof(shortest_match) - 1] = 0;
+		return;
+	}
+
+	// cut shortest_match to the amount common with s
+	for (i = 0; s[i]; i++)
+	{
+		if (tolower (shortest_match[i]) != tolower(s[i]))
+			shortest_match[i] = 0;
+	}
+}
+
+/*
+===============
+PrintMatches
+
+===============
+*/
+static void PrintMatches (const char *s, const char *value)
+{
+	if (!Q_strncasecmp (s, shortest_match, strlen (shortest_match)))
+	{
+		if (value)
+		{
+			Com_Printf ("  %s  (", s);
+			if (value[0]) Com_Printf ("\x01%s", value);
+			Com_Printf (")\n");
+		}
+		else
+		{
+			Com_Printf ("\x01  %s\n", s);
+		}
+	}
+}
+
+/*
+===============
+CompleteCommand
+
+===============
+*/
 void CompleteCommand (void)
 {
-	char	*cmd, *s;
+	completion_string = key_lines[edit_line] + 1;
+	if (completion_string[0] == '\\' || completion_string[0] == '/')
+		completion_string++;
 
-	s = key_lines[edit_line]+1;
-	if (*s == '\\' || *s == '/')
-		s++;
+	match_count = 0;
+	shortest_match[0] = 0;
 
-	cmd = Cmd_CompleteCommand (s);
-	if (!cmd)
-		cmd = Cvar_CompleteVariable (s);
-	if (cmd)
+	if (strlen (completion_string) == 0)
+		return;
+
+	Cmd_CompleteCommand (FindMatches);
+	Cvar_CompleteVariable (FindMatches);
+
+	if (match_count == 0)
+		return;	// no matches
+
+	key_lines[edit_line][1] = '/';
+	strcpy (key_lines[edit_line] + 2, shortest_match);
+	key_linepos = strlen (shortest_match) + 2;
+
+	if (match_count == 1)
 	{
-		key_lines[edit_line][1] = '/';
-		strcpy (key_lines[edit_line]+2, cmd);
-		key_linepos = strlen(cmd)+2;
 		key_lines[edit_line][key_linepos] = ' ';
 		key_linepos++;
 		key_lines[edit_line][key_linepos] = 0;
 		return;
 	}
+
+	// multiple matches, complete to shortest
+	key_lines[edit_line][key_linepos] = 0;
+
+	Com_Printf ("%s\n", key_lines[edit_line]);
+
+	// run through again, printing matches
+	Cmd_CompleteCommand (PrintMatches);
+	Cvar_CompleteVariable (PrintMatches);
 }
 
 /*
@@ -308,6 +386,10 @@ void Key_Console (int key)
 		history_line = edit_line;
 		key_lines[edit_line][0] = ']';
 		key_linepos = 1;
+
+		// move to bottom
+		con.display = con.current;
+
 		if (cls.state == ca_disconnected)
 			SCR_UpdateScreen ();	// force an update, because the command
 									// may take some time
@@ -315,8 +397,13 @@ void Key_Console (int key)
 	}
 
 	if (key == K_TAB || key == K_Y_BUTTON)
-	{	// command completion
+	{
+		// command completion
 		CompleteCommand ();
+
+		// move to bottom
+		con.display = con.current;
+
 		return;
 	}
 

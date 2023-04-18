@@ -430,7 +430,7 @@ void	Cmd_RemoveCommand (char *cmd_name);
 qboolean Cmd_Exists (char *cmd_name);
 // used by the cvar code to check for cvar / command name overlap
 
-char 	*Cmd_CompleteCommand (char *partial);
+void	Cmd_CompleteCommand (void(*callback)(const char *, const char *));
 // attempts to match a partial command for automatic command line completion
 // returns NULL if nothing fits
 
@@ -500,7 +500,7 @@ float	Cvar_VariableValue (char *var_name);
 char	*Cvar_VariableString (char *var_name);
 // returns an empty string if not defined
 
-char 	*Cvar_CompleteVariable (char *partial);
+void	Cvar_CompleteVariable (void(*callback)(const char *, const char *));
 // attempts to match a partial variable name for command line completion
 // returns NULL if nothing fits
 
