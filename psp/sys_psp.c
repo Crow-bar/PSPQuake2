@@ -21,6 +21,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <pspsdk.h>
 #include <pspkernel.h>
+#include <psputility.h>
+#include <pspctrl.h>
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -37,6 +39,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include <sys/select.h>
 
+#include "../psp/debug_psp.h"
 #include "../qcommon/qcommon.h"
 
 
@@ -56,6 +59,11 @@ void IN_KeyUpdate(void);
 // General routines
 // =======================================================================
 
+/*
+=================
+Sys_ConsoleOutput
+=================
+*/
 void Sys_ConsoleOutput (char *string)
 {
 	if (nostdout && nostdout->value)
@@ -64,6 +72,11 @@ void Sys_ConsoleOutput (char *string)
 	fputs(string, stdout);
 }
 
+/*
+=================
+Sys_Printf
+=================
+*/
 void Sys_Printf (char *fmt, ...)
 {
 	va_list argptr;
@@ -89,35 +102,81 @@ void Sys_Printf (char *fmt, ...)
 	}
 }
 
+/*
+=================
+Sys_Quit
+=================
+*/
 void Sys_Quit (void)
 {
 	CL_Shutdown ();
 	Qcommon_Shutdown ();
 
+	Dbg_Shutdown ();
+
 	sceKernelExitGame();
 }
 
+/*
+=================
+Sys_Init
+=================
+*/
 void Sys_Init(void)
 {
 
 }
 
+/*
+=================
+Sys_Error
+=================
+*/
 void Sys_Error (char *error, ...)
 {
-	va_list argptr;
-	char    string[1024];
+	va_list		argptr;
+	char		string[1024];
+	int			size;
+	SceCtrlData	pad;
 
 	CL_Shutdown ();
 	Qcommon_Shutdown ();
 
 	va_start (argptr,error);
-	vsprintf (string,error,argptr);
+	size = vsnprintf (string, sizeof(string), error, argptr);
 	va_end (argptr);
-	fprintf(stderr, "Error: %s\n", string);
+	fprintf (stderr, "Error: %s\n", string);
+
+	if (Dbg_Init (NULL, 8888, "dbgfont", 0) == 0)
+	{
+		Dbg_SetClearColor (0, 0, 0);
+		Dbg_DisplayClear ();
+
+		Dbg_SetTextXY (22, 0);
+		Dbg_SetTextColor (255, 0, 0);
+		Dbg_DrawText ("======== ERROR ========", 23);
+
+		Dbg_SetTextXY (0, 3);
+		Dbg_SetTextColor (255, 255, 255);
+		Dbg_DrawText (string, size);
+
+		Dbg_DrawText( "\n\n\n\nPress X to shutdown.", 24);
+
+		// Wait for a X button press.
+		do sceCtrlReadBufferPositive (&pad, 1);
+		while (!(pad.Buttons & PSP_CTRL_CROSS));
+
+		Dbg_Shutdown ();
+	}
 
 	sceKernelExitGame();
 }
 
+/*
+=================
+Sys_Warn
+=================
+*/
 void Sys_Warn (char *warning, ...)
 {
 	va_list argptr;
@@ -248,11 +307,21 @@ void *Sys_GetGameAPI (void *parms)
 
 /*****************************************************************************/
 
+/*
+=================
+Sys_AppActivate
+=================
+*/
 void Sys_AppActivate (void)
 {
 
 }
 
+/*
+=================
+Sys_SendKeyEvents
+=================
+*/
 void Sys_SendKeyEvents (void)
 {
 	IN_KeyUpdate();
@@ -264,14 +333,105 @@ void Sys_SendKeyEvents (void)
 
 /*****************************************************************************/
 
+/*
+=================
+Sys_GetClipboardData
+=================
+*/
 char *Sys_GetClipboardData(void)
 {
 	return NULL;
 }
 
+/*****************************************************************************/
+
+/*
+=================
+Sys_ParseCmdFile
+=================
+*/
+char *Sys_ParseCmdFile (const char *fname, void(*callback)(char *))
+{
+	int			i, ret, cmd_fd;
+	size_t		cmd_fsize;
+	char		*cmd_buff, *cmd_last;
+
+	cmd_fd = sceIoOpen (fname, PSP_O_RDONLY, 0777);
+	if (cmd_fd < 0)
+		return NULL;
+
+	cmd_fsize = sceIoLseek (cmd_fd, 0, PSP_SEEK_END);
+	sceIoLseek (cmd_fd, 0, PSP_SEEK_SET);
+
+	if (cmd_fsize == 0)
+	{
+		sceIoClose (cmd_fd);
+		return NULL;
+	}
+	cmd_buff = (char *)malloc (cmd_fsize + 1);
+	if (!cmd_buff)
+	{
+		sceIoClose (cmd_fd);
+		return NULL;
+	}
+
+	ret = sceIoRead (cmd_fd, cmd_buff, cmd_fsize);
+	if (ret < 0)
+	{
+		free (cmd_buff);
+		sceIoClose (cmd_fd);
+		return NULL;
+	}
+
+	if (ret != cmd_fsize)
+		cmd_fsize = ret;
+
+	cmd_buff[cmd_fsize] = 0;
+	cmd_last = NULL;
+
+	for (i = 0; i < cmd_fsize; i++)
+	{
+		if (isspace (cmd_buff[i]))
+		{
+			cmd_buff[i] = 0;
+			if (cmd_last)
+				callback (cmd_last);
+			cmd_last = NULL;
+		}
+		else if (!cmd_last)
+			cmd_last = &cmd_buff[i];
+	}
+
+	if (cmd_last)
+		callback (cmd_last);
+
+	sceIoClose (cmd_fd);
+
+	return cmd_buff;
+}
+
+/*****************************************************************************/
+
+/*
+=================
+Sys_CopyProtect
+=================
+*/
+void Sys_CopyProtect(void)
+{
+
+}
+
+/*****************************************************************************/
+
+/*
+=================
+main
+=================
+*/
 int main (int argc, char **argv)
 {
-	int 	time, oldtime, newtime;
+	int	time, oldtime, newtime;
 
 	pspSdkDisableFPUExceptions();
 
@@ -294,9 +454,4 @@ int main (int argc, char **argv)
 	//sceKernelExitGame();
 
 	return 0;
-}
-
-void Sys_CopyProtect(void)
-{
-
 }

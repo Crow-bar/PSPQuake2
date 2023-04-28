@@ -11,6 +11,8 @@ USE_VAUDIO := 0
 USE_CDMP3 := 0
 USE_STDIN := 0
 
+RESOURCES        = $(SRCDIR)/psp/resources/*
+
 TARGET           = $(BUILDDIR)/PSPQuake2
 EXTRA_TARGETS    = $(BUILDDIR)/EBOOT.PBP
 
@@ -116,12 +118,11 @@ install: all
 	@echo "Installing..."
 	@mkdir -pv $(INSTALL_DIR)
 	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
+	@cp -fv $(RESOURCES) $(INSTALL_DIR)
 	@echo "Done."
 
-install-prx: all
-	@echo "Installing..."
-	@mkdir -pv $(INSTALL_DIR)
-	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
+install-prx: install
+	@echo "Installing prx..."
 	@cp -fv $(FINAL_TARGET) $(INSTALL_DIR)
 	@echo "Done."
 
@@ -172,6 +173,7 @@ QUAKE2_OBJS = \
 	$(SERVER_DIR)/sv_user.o \
 	$(SERVER_DIR)/sv_world.o \
 	\
+	$(PSP_DIR)/debug_psp.o \
 	$(PSP_DIR)/sys_psp.o \
 	$(PSP_DIR)/in_psp.o \
 	$(PSP_DIR)/vid_psp.o \
