@@ -639,9 +639,9 @@ store:
 					a = a*t;
 				}
 
-				dest[0] = r;
-				dest[1] = g;
-				dest[2] = b;
+				dest[0] = gl_state.gammatable[r];
+				dest[1] = gl_state.gammatable[g];
+				dest[2] = gl_state.gammatable[b];
 				dest[3] = a;
 
 				bl += 3;
@@ -724,9 +724,9 @@ store:
 					break;
 				}
 
-				dest[0] = r;
-				dest[1] = g;
-				dest[2] = b;
+				dest[0] = gl_state.gammatable[r];
+				dest[1] = gl_state.gammatable[g];
+				dest[2] = gl_state.gammatable[b];
 				dest[3] = a;
 
 				bl += 3;
