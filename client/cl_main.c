@@ -582,6 +582,7 @@ void CL_Rcon_f (void)
 }
 
 
+
 /*
 =====================
 CL_ClearState
@@ -596,6 +597,20 @@ void CL_ClearState (void)
 
 	if (re.ClearRegistered)
 		re.ClearRegistered ();
+
+	if (!Com_ServerState ())
+	{
+		// clear collision map data
+		CM_ClearMap();
+
+		// clear hunk to base mark
+		Com_HunkClear ();
+	}
+	else
+	{
+		// clear hunk to server mark
+		Com_HunkClearToMark ();
+	}
 
 // wipe the entire cl structure
 	memset (&cl, 0, sizeof(cl));

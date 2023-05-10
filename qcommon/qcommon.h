@@ -778,7 +778,10 @@ void 		Com_Printf (char *fmt, ...);
 void 		Com_DPrintf (char *fmt, ...);
 void 		Com_Error (int code, char *fmt, ...);
 void 		Com_Quit (void);
-void		Com_ClearMemory (void);
+
+void		Com_HunkClear (void);
+void		Com_HunkSetMark (void);
+void		Com_HunkClearToMark (void);
 
 int			Com_ServerState (void);		// this should have just been a cvar...
 void		Com_SetServerState (int state);

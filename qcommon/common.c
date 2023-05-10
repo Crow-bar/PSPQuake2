@@ -33,7 +33,8 @@ char	*com_cmdbuffer;
 
 int		realtime;
 
-int		com_hunklevel = 0;
+int		com_hunkbase = 0;
+int		com_hunkmark = 0;
 
 jmp_buf abortframe;		// an ERR_DROP occured, exit the entire frame
 
@@ -1282,18 +1283,47 @@ void Com_Error_f (void)
 
 /*
 ================
-Com_ClearMemory
+Com_HunkClear
 
-This clears all the memory used by both the client and server, but does
-not reinitialize anything.
+The server calls this before shutting down or loading a new map
 ================
 */
-void Com_ClearMemory (void)
+void Com_HunkClear (void)
 {
-	Com_Printf ("Clearing memory\n");
+	Com_Printf ("Hunk clear\n");
 
-	if (com_hunklevel)
-		Hunk_FreeToLowMark (com_hunklevel);
+	if (com_hunkbase)
+		Hunk_FreeToLowMark (com_hunkbase);
+
+	com_hunkmark = com_hunkbase;
+}
+
+/*
+================
+Com_HunkSetMark
+
+The server calls this after the level and game have been loaded
+================
+*/
+void Com_HunkSetMark (void)
+{
+	Hunk_AllocName (0, "-COM_MARK-");
+	com_hunkmark = Hunk_LowMark ();
+}
+
+/*
+================
+Com_HunkClearToMark
+
+The client calls this before starting
+================
+*/
+void Com_HunkClearToMark (void)
+{
+	Com_Printf ("Hunk clear to mark\n");
+
+	if (com_hunkmark)
+		Hunk_FreeToLowMark (com_hunkmark);
 }
 
 /*
@@ -1375,8 +1405,8 @@ void Qcommon_Init (int argc, char **argv)
 	SV_Init ();
 	CL_Init ();
 
-	Hunk_AllocName (0, "-COM_HUNKLEVEL-");
-	com_hunklevel = Hunk_LowMark ();
+	Hunk_AllocName (0, "-COM_BASE-");
+	com_hunkmark = com_hunkbase = Hunk_LowMark ();
 
 	// add + commands from command line
 	if (!Cbuf_AddLateCommands ())

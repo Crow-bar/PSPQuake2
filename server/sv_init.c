@@ -180,7 +180,7 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 	CM_ClearMap();
 
 	// clear hunk
-	Com_ClearMemory ();
+	Com_HunkClear ();
 
 	svs.spawncount++;		// any partially connected client will be
 							// restarted
@@ -277,6 +277,8 @@ void SV_SpawnServer (char *server, char *spawnpoint, server_state_t serverstate,
 
 	// set serverinfo variable
 	Cvar_FullSet ("mapname", sv.name, CVAR_SERVERINFO | CVAR_NOSET);
+
+	Com_HunkSetMark ();
 
 	Com_Printf ("-------------------------------------\n");
 }
