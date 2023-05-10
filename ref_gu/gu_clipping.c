@@ -34,6 +34,16 @@ Based on clipping system from PSP Quake by Peter Mackay and Chris Swindle.
 
 #define MAX_CLIPPED_VERTICES	32
 
+#define GU_REG_FR_SAVE		M600
+#define GU_REG_FR_CURR		M700
+#define GU_REG_CP_BOTTOM	C700
+#define GU_REG_CP_LEFT		C710
+#define GU_REG_CP_RIGHT		C720
+#define GU_REG_CP_TOP		C730
+
+#define M_TOS(arg)			#arg
+#define M_ATOS(arg)			M_TOS(arg)
+
 // Cache
 static ScePspFMatrix4	projection_view_matrix;
 
@@ -55,21 +65,21 @@ static inline void GU_ClipGetAndStoreFrustum (const ScePspFMatrix4 *matrix)
 		"lv.q		C110, 16(%0)\n"			// C010 = matrix->y
 		"lv.q		C120, 32(%0)\n"			// C020 = matrix->z
 		"lv.q		C130, 48(%0)\n"			// C030 = matrix->w
-		"vadd.q		C000, R103, R101\n"		// C000 = R103 + R101                                   ( BOTTOM )
-		"vadd.q		C010, R103, R100\n"		// C010 = R103 + R100                                   ( LEFT )
-		"vsub.q		C020, R103, R100\n"		// C020 = R103 - R100                                   ( RIGHT )
-		"vsub.q		C030, R103, R101\n"		// C030 = R103 - R101                                   ( TOP )
-		"vdot.q		S200, C000, C000\n"		// S110 = S100*S100 + S101*S101 + S102*S102 + S103*S103 ( BOTTOM )
-		"vdot.q		S201, C010, C010\n"		// S110 = S100*S100 + S101*S101 + S102*S102 + S103*S103 ( LEFT )
-		"vdot.q		S202, C020, C020\n"		// S110 = S100*S100 + S101*S101 + S102*S102 + S103*S103 ( RIGHT )
-		"vdot.q		S203, C030, C030\n"		// S110 = S100*S100 + S101*S101 + S102*S102 + S103*S103 ( TOP )
+		"vadd.q		C000, R103, R101\n"		// C000 = R103 + R101                       ( BOTTOM )
+		"vadd.q		C010, R103, R100\n"		// C010 = R103 + R100                       ( LEFT )
+		"vsub.q		C020, R103, R100\n"		// C020 = R103 - R100                       ( RIGHT )
+		"vsub.q		C030, R103, R101\n"		// C030 = R103 - R101                       ( TOP )
+		"vdot.t		S200, C000, C000\n"		// S110 = S100*S100 + S101*S101 + S102*S102 ( BOTTOM )
+		"vdot.t		S201, C010, C010\n"		// S110 = S100*S100 + S101*S101 + S102*S102 ( LEFT )
+		"vdot.t		S202, C020, C020\n"		// S110 = S100*S100 + S101*S101 + S102*S102 ( RIGHT )
+		"vdot.t		S203, C030, C030\n"		// S110 = S100*S100 + S101*S101 + S102*S102 ( TOP )
 		"vcmp.q		EZ,   C200\n"			// CC[*] = ( C200 == 0.0f )
 		"vrsq.q		C200, C200\n"			// C200 = 1.0 / sqrt( C200 )
 		"vcmovt.q	C200, C210, 6\n"		// if ( CC[*] ) C200 = C210
-		"vscl.q		C700, C000, S200\n"		// C700 = C000 * S200                                   ( BOTTOM )
-		"vscl.q		C710, C010, S201\n"		// C710 = C010 * S201                                   ( LEFT )
-		"vscl.q		C720, C020, S202\n"		// C720 = C020 * S202                                   ( RIGHT )
-		"vscl.q		C730, C030, S203\n"		// C730 = C030 * S203                                   ( TOP )
+		"vscl.q		"M_ATOS(GU_REG_CP_BOTTOM)", C000, S200\n"		// GU_REG_CP_BOTTOM = C000 * S200
+		"vscl.q		"M_ATOS(GU_REG_CP_LEFT)",   C010, S201\n"		// GU_REG_CP_LEFT   = C010 * S201
+		"vscl.q		"M_ATOS(GU_REG_CP_RIGHT)",  C020, S202\n"		// GU_REG_CP_RIGHT  = C020 * S202
+		"vscl.q		"M_ATOS(GU_REG_CP_TOP)",    C030, S203\n"		// GU_REG_CP_TOP    = C030 * S203
 		".set		pop\n"					// Restore assembler option
 		::	"r"(matrix)
 	);
@@ -87,18 +97,18 @@ void GU_ClipSetWorldFrustum (void)
 	ScePspFMatrix4	proj, view;
 
 	// Get the projection matrix.
-	sceGumMatrixMode(GU_PROJECTION);
-	sceGumStoreMatrix(&proj);
+	sceGumMatrixMode (GU_PROJECTION);
+	sceGumStoreMatrix (&proj);
 
 	// Get the view matrix.
-	sceGumMatrixMode(GU_VIEW);
-	sceGumStoreMatrix(&view);
+	sceGumMatrixMode (GU_VIEW);
+	sceGumStoreMatrix (&view);
 
 	// Restore matrix mode.
-	sceGumMatrixMode(GU_MODEL);
+	sceGumMatrixMode (GU_MODEL);
 
 	// Combine the two matrices (multiply projection by view).
-	gumMultMatrix(&projection_view_matrix, &proj, &view);
+	gumMultMatrix (&projection_view_matrix, &proj, &view);
 
 	// Calculate and cache the clipping frustum.
 	GU_ClipGetAndStoreFrustum (&projection_view_matrix);
@@ -107,7 +117,7 @@ void GU_ClipSetWorldFrustum (void)
 	__asm__ volatile(
 		".set		push\n"					// save assembler option
 		".set		noreorder\n"			// suppress reordering
-		"vmmov.q	M600, M700\n"			// Save frustum
+		"vmmov.q	"M_ATOS(GU_REG_FR_SAVE)"," M_ATOS(GU_REG_FR_CURR)"\n"	// Save frustum
 		".set		pop\n"					// Restore assembler option
 	);
 }
@@ -125,7 +135,7 @@ void GU_ClipRestoreWorldFrustum (void)
 	__asm__ volatile(
 		".set		push\n"					// save assembler option
 		".set		noreorder\n"			// suppress reordering
-		"vmmov.q	M700, M600\n"			// Restore frustum
+		"vmmov.q	"M_ATOS(GU_REG_FR_CURR)", "M_ATOS(GU_REG_FR_SAVE)"\n"	// Restore frustum
 		".set		pop\n"					// Restore assembler option
 	);
 }
@@ -143,7 +153,7 @@ void GU_ClipSetModelFrustum (void)
 	ScePspFMatrix4	projection_view_model_matrix;
 
 	// Get matrix.
-	sceGumStoreMatrix(&model_matrix);
+	sceGumStoreMatrix (&model_matrix);
 
 	// Combine the matrices (multiply projection-view by model).
 	gumMultMatrix (&projection_view_model_matrix, &projection_view_matrix, &model_matrix);
@@ -172,7 +182,7 @@ int GU_ClipIsRequired (gu_vert_ftv_t* uv, int uvc)
 		"lv.s		S010,  8(%1)\n"			// S010 = v[i].xyz[0]
 		"lv.s		S011,  12(%1)\n"		// S011 = v[i].xyz[1]
 		"lv.s		S012,  16(%1)\n"		// S012 = v[i].xyz[2]
-		"vhtfm4.q	C020, M700, C010\n"		// C020 = frustrum * v[i].xyz
+		"vhtfm4.q	C020, "M_ATOS(GU_REG_FR_CURR)", C010\n"		// C020 = frustrum * v[i].xyz
 		"vcmp.q		LT,   C020, C000\n"		// S020 < 0.0f || S021 < 0.0f || S022 < 0.0f || S023 < 0.0f
 		"bvt		4,    1f\n"				// if ( CC[4] == 1 ) jump to exit
 		"nop\n"								// 												( delay slot )
@@ -191,14 +201,22 @@ int GU_ClipIsRequired (gu_vert_ftv_t* uv, int uvc)
 
 /*
 =================
-GU_Clip2Plane
+GU_ClipPolygon
 
 Clips a polygon against a plane.
 =================
 */
-static inline void GU_Clip2Plane (gu_vert_ftv_t *uv, int uvc, gu_vert_ftv_t *cv, int *cvc)
+#define GU_ClipPolygonSetPlaneReg(reg)		\
+	__asm__ volatile(						\
+		".set		push\n"					\
+		".set		noreorder\n"			\
+		"vmov.q		C010, "M_TOS(reg)"\n"	\
+		".set		pop\n"					\
+	)
+
+static inline void GU_ClipPolygon (gu_vert_ftv_t *uv, int uvc, gu_vert_ftv_t *cv, int *cvc)
 {
-	gu_vert_ftv_t	*uv_end = uv + ( uvc - 1 );
+	gu_vert_ftv_t	*uv_end = uv + (uvc - 1);
 	gu_vert_ftv_t	*cv_start = cv;
 
 	__asm__ (
@@ -218,14 +236,14 @@ static inline void GU_Clip2Plane (gu_vert_ftv_t *uv, int uvc, gu_vert_ftv_t *cv,
 		"lv.s		S230,  0(%1)\n"			// Load vertex S TEX(4b) U into register
 		"lv.s		S231,  4(%1)\n"			// Load vertex S TEX(4b) V into register
 		"vhdp.q		S232, C220, C010\n"		// distance S -> dS
-		"vcmp.s		GT, S212, S000\n"		// if (dP <= 0)
+		"vcmp.s		GE, S212, S000\n"		// if (dP >= 0)
 		"bvf		0, 1f\n"				// goto 1:
 		"nop\n"
-		"sv.s		S210,  0(%0)\n"			// cv->uv[0]  = C020 U
-		"sv.s		S211,  4(%0)\n"			// cv->uv[1]  = C021 V
-		"sv.s		S200,  8(%0)\n"			// cv->xyz[0] = C030 X
-		"sv.s		S201, 12(%0)\n"			// cv->xyz[1] = C031 Y
-		"sv.s		S202, 16(%0)\n"			// cv->xyz[2] = C032 Z
+		"sv.s		S210,  0(%0)\n"			// cv->uv[0]  = S210 U
+		"sv.s		S211,  4(%0)\n"			// cv->uv[1]  = S211 V
+		"sv.s		S200,  8(%0)\n"			// cv->xyz[0] = S200 X
+		"sv.s		S201, 12(%0)\n"			// cv->xyz[1] = S201 Y
+		"sv.s		S202, 16(%0)\n"			// cv->xyz[2] = S202 Z
 		"addiu		%0, %0, %3\n"			// cv + sizeof(gu_vert_ftv_t)
 	"1:\n"
 		"vmul.s		S020, S232, S212\n"		// (dS * dP)
@@ -278,7 +296,7 @@ Clips a polygon against the frustum
 */
 void GU_Clip (gu_vert_ftv_t *uv, int uvc, gu_vert_ftv_t **cv, int* cvc)
 {
-	size_t		vc;
+	int	vc;
 
 	if (!uvc)	// no vertices to clip?
 		Sys_Error ("GU_Clip: calling clip with zero vertices!");
@@ -286,42 +304,22 @@ void GU_Clip (gu_vert_ftv_t *uv, int uvc, gu_vert_ftv_t **cv, int* cvc)
 	vc = uvc;
 	*cvc = 0;
 
-	__asm__ volatile(
-		".set		push\n"					// save assembler option
-		".set		noreorder\n"			// suppress reordering
-		"vmov.q		C010, C700\n"			// CPLANE_BOTTOM
-		".set		pop\n"					// suppress reordering
-	);
-	GU_Clip2Plane (uv,             vc, work_buffer[0], &vc);
+	GU_ClipPolygonSetPlaneReg (GU_REG_CP_BOTTOM);
+	GU_ClipPolygon (uv, vc, work_buffer[0], &vc);
 	if (!vc) return;
 
-	__asm__ volatile(
-		".set		push\n"					// save assembler option
-		".set		noreorder\n"			// suppress reordering
-		"vmov.q		C010, C710\n"			// CPLANE_LEFT
-		".set		pop\n"					// suppress reordering
-	);
-	GU_Clip2Plane (work_buffer[0], vc, work_buffer[1], &vc);
+	GU_ClipPolygonSetPlaneReg (GU_REG_CP_LEFT);
+	GU_ClipPolygon (work_buffer[0], vc, work_buffer[1], &vc);
 	if (!vc) return;
 
-	__asm__ volatile(
-		".set		push\n"					// save assembler option
-		".set		noreorder\n"			// suppress reordering
-		"vmov.q		C010, C720\n"			// CPLANE_RIGHT
-		".set		pop\n"					// suppress reordering
-	);
-	GU_Clip2Plane (work_buffer[1], vc, work_buffer[0], &vc);
+	GU_ClipPolygonSetPlaneReg (GU_REG_CP_RIGHT);
+	GU_ClipPolygon (work_buffer[1], vc, work_buffer[0], &vc);
 	if (!vc) return;
 
-	__asm__ volatile(
-		".set		push\n"					// save assembler option
-		".set		noreorder\n"			// suppress reordering
-		"vmov.q		C010, C730\n"			// CPLANE_TOP
-		".set		pop\n"					// suppress reordering
-	);
+	GU_ClipPolygonSetPlaneReg (GU_REG_CP_TOP);
 	*cv = extGuBeginMemory (NULL); // uncached
-	GU_Clip2Plane (work_buffer[0], vc, *cv, cvc);
+	GU_ClipPolygon (work_buffer[0], vc, *cv, cvc);
 	if (!(*cvc)) return;
 
-	extGuEndMemory ((void *)(*cv + *cvc));
+	extGuEndMemory (*cv + *cvc);
 }
