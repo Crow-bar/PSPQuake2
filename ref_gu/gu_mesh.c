@@ -36,8 +36,6 @@ float	r_avertexnormals[NUMVERTEXNORMALS][3] = {
 #include "anorms.h"
 };
 
-typedef float vec4_t[4];
-
 static	vec4_t	s_lerped[MAX_VERTS];
 //static	vec3_t	lerped[MAX_VERTS];
 
@@ -52,6 +50,89 @@ float	r_avertexnormal_dots[SHADEDOT_QUANT][256] =
 
 float	*shadedots = r_avertexnormal_dots[0];
 
+#if 1
+static inline void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *verts, float *lerp, float move[3], float frontv[3], float backv[3] )
+{
+	int i;
+
+	__asm__ volatile (
+		".set		push\n"					// save assembler option
+		".set		noreorder\n"			// suppress reordering
+		"lv.s		S010,  0 + %0\n"		// S010 = backv[0]
+		"lv.s		S011,  0 + %1\n"		// S011 = frontv[0]
+		"lv.s		S012,  0 + %2\n"		// S013 = move[0]
+		"lv.s		S020,  4 + %0\n"		// S020 = backv[1]
+		"lv.s		S021,  4 + %1\n"		// S021 = frontv[1]
+		"lv.s		S022,  4 + %2\n"		// S023 = move[1]
+		"lv.s		S030,  8 + %0\n"		// S030 = backv[2]
+		"lv.s		S031,  8 + %1\n"		// S031 = frontv[2]
+		"lv.s		S032,  8 + %2\n"		// S033 = move[2]
+		".set		pop\n"					// restore assembler option
+		:: "m"(*backv), "m"(*frontv), "m"(*move)
+	);
+
+	//PMM -- added RF_SHELL_DOUBLE, RF_SHELL_HALF_DAM
+	if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
+	{
+		__asm__ volatile (
+			".set		push\n"					// save assembler option
+			".set		noreorder\n"			// suppress reordering
+			"vfim.s		S013, "M_ATOS(POWERSUIT_SCALE)"\n"
+			"vmov.p		R023, R003[Y,Y]\n"		// S013 = S023 = S033 = POWERSUIT_SCALE
+			".set		pop\n"					// restore assembler option
+			:: "m"(*backv), "m"(*frontv), "m"(*move)
+		);
+
+		for (i=0 ; i < nverts; i++, v++, ov++, lerp+=4 )
+		{
+			float *normal = r_avertexnormals[verts[i].lightnormalindex];
+			__asm__ volatile (
+				".set		push\n"					// save assembler option
+				".set		noreorder\n"			// suppress reordering
+				"lv.s		S000, 0 + %1\n"			// ov->v[3] and ov->lightnormalindex
+				"lv.s		S002, 0 + %2\n"			// v->v[3] and ov->lightnormalindex
+				".word		0xD03880A4\n"			// vuc2i.s	R100, C000 !!!
+				".word		0xD03840A5\n"			// vuc2i.s	R101, C002 !!!
+				"vi2f.t		R100, R100, 23\n"		// R100 = float(R100)
+				"vi2f.t		R101, R101, 23\n"		// R101 = float(R101)
+				"lv.s		S102, 0 + %3\n"			// S102 = normal[0]
+				"lv.s		S112, 4 + %3\n"			// S112 = normal[1]
+				"lv.s		S122, 8 + %3\n"			// S122 = normal[2]
+				"vhdp.q		S000, C100, C010[X,Y,W,Z]\n"		// ov->v[0]*backv[0] + v->v[0]*frontv[0] + normal[0] * POWERSUIT_SCALE + move[0]
+				"vhdp.q		S001, C110, C020[X,Y,W,Z]\n"		// ov->v[1]*backv[1] + v->v[1]*frontv[1] + normal[1] * POWERSUIT_SCALE + move[1]
+				"vhdp.q		S002, C120, C030[X,Y,W,Z]\n"		// ov->v[2]*backv[2] + v->v[2]*frontv[2] + normal[2] * POWERSUIT_SCALE + move[2]
+				"sv.q		C000, %0\n"				// lerp -> (vec4_t) !!!
+				".set		pop\n"					// restore assembler option
+				:	"=m"(*lerp)
+				:	"m"(*ov->v), "m"(*v->v), "m"(*normal)
+			);
+		}
+	}
+	else
+	{
+		for (i=0 ; i < nverts; i++, v++, ov++, lerp+=4)
+		{
+			__asm__ volatile (
+				".set		push\n"					// save assembler option
+				".set		noreorder\n"			// suppress reordering
+				"lv.s		S000, 0 + %1\n"			// ov->v[3] and ov->lightnormalindex
+				"lv.s		S002, 0 + %2\n"			// v->v[3] and ov->lightnormalindex
+				".word		0xD03880A4\n"			// vuc2i.s	R100, C000 !!!
+				".word		0xD03840A5\n"			// vuc2i.s	R101, C002 !!!
+				"vi2f.t		R100, R100, 23\n"		// R100 = float(R100)
+				"vi2f.t		R101, R101, 23\n"		// R101 = float(R101)
+				"vhdp.t		S000, C100, C010\n"		// ov->v[0]*backv[0] + v->v[0]*frontv[0] + move[0]
+				"vhdp.t		S001, C110, C020\n"		// ov->v[1]*backv[1] + v->v[1]*frontv[1] + move[1]
+				"vhdp.t		S002, C120, C030\n"		// ov->v[2]*backv[2] + v->v[2]*frontv[2] + move[2]
+				"sv.q		C000, %0\n"				// lerp -> (vec4_t) !!!
+				".set		pop\n"					// restore assembler option
+				:	"=m"(*lerp)
+				:	"m"(*ov->v), "m"(*v->v)
+			);
+		}
+	}
+}
+#else
 void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *verts, float *lerp, float move[3], float frontv[3], float backv[3] )
 {
 	int i;
@@ -59,10 +140,6 @@ void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *ver
 	//PMM -- added RF_SHELL_DOUBLE, RF_SHELL_HALF_DAM
 	if ( currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM) )
 	{
-		for (i=0 ; i < nverts; i++, v++, ov++, lerp+=4 )
-		{
-			float *normal = r_avertexnormals[verts[i].lightnormalindex];
-
 			lerp[0] = move[0] + ov->v[0]*backv[0] + v->v[0]*frontv[0] + normal[0] * POWERSUIT_SCALE;
 			lerp[1] = move[1] + ov->v[1]*backv[1] + v->v[1]*frontv[1] + normal[1] * POWERSUIT_SCALE;
 			lerp[2] = move[2] + ov->v[2]*backv[2] + v->v[2]*frontv[2] + normal[2] * POWERSUIT_SCALE;
@@ -79,6 +156,7 @@ void GL_LerpVerts( int nverts, dtrivertx_t *v, dtrivertx_t *ov, dtrivertx_t *ver
 	}
 
 }
+#endif
 
 /*
 =============

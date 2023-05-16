@@ -62,6 +62,9 @@ typedef enum {false, true}	qboolean;
 #define NULL ((void *)0)
 #endif
 
+#define M_TOS(arg)			#arg
+#define M_ATOS(arg)			M_TOS(arg)
+
 
 // angle indexes
 #define	PITCH				0		// up / down
@@ -129,6 +132,11 @@ MATHLIB
 
 typedef float vec_t;
 typedef vec_t vec3_t[3];
+#ifdef __psp__
+typedef vec_t vec4_t[4] __attribute__((aligned(16)));
+#else
+typedef vec_t vec4_t[4];
+#endif
 typedef vec_t vec5_t[5];
 
 typedef	int	fixed4_t;

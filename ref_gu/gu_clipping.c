@@ -41,9 +41,6 @@ Based on clipping system from PSP Quake by Peter Mackay and Chris Swindle.
 #define GU_REG_CP_RIGHT		C720
 #define GU_REG_CP_TOP		C730
 
-#define M_TOS(arg)			#arg
-#define M_ATOS(arg)			M_TOS(arg)
-
 // Cache
 static ScePspFMatrix4	projection_view_matrix;
 
