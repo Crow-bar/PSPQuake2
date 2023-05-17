@@ -1,6 +1,7 @@
 .vscode
 */debug
 */release
+*/prof
 */dist
 *.o
 *.d

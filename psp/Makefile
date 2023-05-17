@@ -35,9 +35,6 @@ PSP_BASE_ADDR    = 0x08804000
 
 SRCDIR=..
 
-BUILD_DEBUG_DIR   = debug
-BUILD_RELEASE_DIR = release
-
 INSTALL_DIR       = dist
 
 CLIENT_DIR        = $(BUILDDIR)/client
@@ -53,7 +50,7 @@ CTF_DIR           = $(BUILDDIR)/ctf
 XATRIX_DIR        = $(BUILDDIR)/xatrix
 
 STLINK_CFLAGS = -DREF_HARD_LINKED -DGAME_HARD_LINKED
-HASH_CFLAGS = -DUSE_HASH_FOR_TEXTURES -DUSE_HASH_FOR_SFX
+HASH_CFLAGS = -DUSE_HASH_FOR_TEXTURES -DUSE_HASH_FOR_SFX -DUSE_HASH_FOR_FILES
 
 BASE_CFLAGS = -MD -G0 -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS)
 
@@ -63,8 +60,10 @@ release_CFLAGS = $(BASE_CFLAGS) -O3 \
 
 debug_CFLAGS= -g $(BASE_CFLAGS) -DUSE_STDIN
 
+prof_CFLAGS= -g -pg -O0 $(BASE_CFLAGS) -DUSE_GPROF
+
 ifeq ($(USE_STDIN), 1)
-release_CFLAGS += -DUSE_STDIN
+BASE_CFLAGS += -DUSE_STDIN
 endif
 
 #LDFLAGS = -lm
@@ -81,10 +80,16 @@ ifeq ($(USE_CDMP3), 1)
 LIBS += -lpspmp3
 endif
 
+ifeq ($(BUILD), prof)
+LIBS += -lpspprof
+PSP_LARGE_MEMORY = 1
+BUILD_PRX = 0
+endif
+
 #############################################################################
 # SETUP AND BUILD
 #############################################################################
-VALID_BUILD = debug release
+VALID_BUILD = debug release prof
 VALID_REF = soft gu
 VALID_GAMES = base ctf xatrix
 
@@ -420,13 +425,16 @@ $(BUILDDIR)/ref_gu.o: $(REF_GU_OBJS)
 # MISC
 #############################################################################
 
-clean-all: clean-debug clean-release
+clean-all: clean-debug clean-release clean-prof
 
 clean-debug:
 	$(MAKE) clean2 BUILD=debug
 
 clean-release:
 	$(MAKE) clean2 BUILD=release
+
+clean-prof:
+	$(MAKE) clean2 BUILD=prof
 
 clean2: clean
 	-rm -f \

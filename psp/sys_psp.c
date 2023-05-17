@@ -24,6 +24,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include <psputility.h>
 #include <pspctrl.h>
 
+#ifdef USE_GPROF
+#include <pspprof.h>
+#endif
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -113,6 +117,10 @@ void Sys_Quit (void)
 	Qcommon_Shutdown ();
 
 	Dbg_Shutdown ();
+
+#ifdef USE_GPROF
+	gprof_cleanup();
+#endif
 
 	sceKernelExitGame();
 }
@@ -442,13 +450,15 @@ int main (int argc, char **argv)
 	oldtime = Sys_Milliseconds ();
 	while (1)
 	{
+		newtime = Sys_Milliseconds ();
+		time = newtime - oldtime;
+
 		// find time spent rendering last frame
-		do {
-			newtime = Sys_Milliseconds ();
-			time = newtime - oldtime;
-		} while (time < 1);
-		Qcommon_Frame (time);
-		oldtime = newtime;
+		if (time)
+		{
+			Qcommon_Frame (time);
+			oldtime = newtime;
+		}
 	}
 
 	//sceKernelExitGame();
