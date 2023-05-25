@@ -327,6 +327,8 @@ void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data
 	sceGuTexFilter (GU_LINEAR, GU_LINEAR);
 	sceGuTexImage (0, 256, 256, 256, image8);
 
+	gl_state.currenttexture = -1;
+
 	gu_vert_htv_t* const out = (gu_vert_htv_t*)sceGuGetMemory (sizeof(gu_vert_htv_t ) * 2);
 	out[0].u = 0;
 	out[0].v = 0;
