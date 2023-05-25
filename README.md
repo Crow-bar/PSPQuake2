@@ -6,6 +6,8 @@
 
 ## Выполнено:
 
+* Поддержка загрузки входных параметров через файл (start.cmd)
+* Бокс с информацией об ошибке
 * Файловая система c прямым обращением к функциям sceIo
 * Менеджер памяти из Quake 1
 * Карта коллизий загрузка с динамическим распределением памяти
@@ -18,8 +20,6 @@
 
 ## Не выполнено:
 
-* Поддержка загрузки входных параметров через файл (start.cmd)
-* Бокс с информацией об ошибке
 * Спящий режим
 * MIP-текстурирование в аппаратном рендеринге
 * Разделяемые игровые модули
@@ -29,8 +29,6 @@
 
 * Недостаточно памяти для работы всех карт одиночной игры на PSP-1000
 > Решаемо
-* Пропадают полигоны при аппаратном рендеринге
-> Вероятно ошибка в коде программного отсечения
 * Сбой при попытке открыть меню Multiplayer
 > Сбой происходит исключительно при отсутствии сохраненых точек доступа Wi-Fi
 
@@ -39,7 +37,7 @@
 
 ### Параметры(первое значение по умолчанию):
 
-	BUILD      (debug, release) - Режим сборки
+	BUILD(debug, release, prof) - Режим сборки
 	REF              (soft, gu) - Рендеринг: soft - программный, gu - аппаратный
 	GAME            (base, ctf) - Игра
 	USE_VAUDIO           (0, 1) - Вывод звука через vaudio
@@ -82,6 +80,8 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 
 ## Done:
 
+* Support for loading input parameters via file (start.cmd)
+* Box with error information
 * File system with direct access to sceIo functions
 * Memory manager from Quake 1
 * Сollision map loading with dynamic memory allocation
@@ -94,8 +94,6 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 
 ## Not done:
 
-* Support for loading input parameters via file (start.cmd)
-* Box with error information
 * Sleep mode
 * MIP-texturing in hardware rendering
 * Shareable game modules
@@ -105,8 +103,6 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 
 * Not enough memory to run all single player maps on PSP-1000
 > Solvable
-* Disappearing polygons on hardware rendering
-> Probably a bug in the software clipping code
 * Crash when trying to open Multiplayer menu
 > Failure occurs only if there are no saved Wi-Fi hotspots
 
@@ -115,7 +111,7 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 
 ### Parameters (first default):
 
-	BUILD      (debug, release) - Build mode
+	BUILD(debug, release, prof) - Build mode
 	REF              (soft, gu) - Rendering: soft - software, gu - hardware
 	GAME            (base, ctf) - Game
 	USE_VAUDIO           (0, 1) - Audio output via vaudio
