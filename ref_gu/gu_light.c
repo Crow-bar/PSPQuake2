@@ -34,45 +34,109 @@ DYNAMIC LIGHTS BLEND RENDERING
 =============================================================================
 */
 
+// sin(((16 - i) / 16.0) * (M_PI * 2))
+// cos(((16 - i) / 16.0) * (M_PI * 2))
+static float dlighttab[17][2] = {
+{ 0.000000,  1.000000},
+{-0.382683,  0.923879},
+{-0.707107,  0.707107},
+{-0.923879,  0.382683},
+{-1.000000,  0.000000},
+{-0.923879, -0.382683},
+{-0.707107, -0.707107},
+{-0.382683, -0.923879},
+{-0.000000, -1.000000},
+{ 0.382683, -0.923879},
+{ 0.707107, -0.707107},
+{ 0.923879, -0.382683},
+{ 1.000000, -0.000000},
+{ 0.923879,  0.382683},
+{ 0.707107,  0.707107},
+{ 0.382683,  0.923879},
+{ 0.000000,  1.000000},
+};
+/*
+typedef struct
+{
+	vec3_t	origin;
+	vec3_t	color;
+	float	intensity;
+} dlight_t;
+
+vec3_t	vup;
+vec3_t	vpn;
+vec3_t	vright;
+
+*/
 void R_RenderDlight (dlight_t *light)
 {
-	int		i, j;
-	float	a;
-	vec3_t	v;
-	float	rad;
+	int		i;
 	uint	vertcount;
 
-	rad = light->intensity * 0.35;
-
-	VectorSubtract (light->origin, r_origin, v);
-#if 0
-	// FIXME?
-	if (VectorLength (v) < rad)
-	{	// view is inside the dlight
-		V_AddBlend (light->color[0], light->color[1], light->color[2], light->intensity * 0.0003, v_blend);
-		return;
-	}
-#endif
 	gu_vert_fcv_t* const out = (gu_vert_fcv_t*)sceGuGetMemory(sizeof(gu_vert_fcv_t) * 18);
 
 	vertcount = 0;
 
-	out[vertcount].c = GU_HCOLOR_3F(light->color[0] * 0.2f, light->color[1] * 0.2f, light->color[2] * 0.2f);
-	out[vertcount].x = light->origin[0] - vpn[0] * rad;
-	out[vertcount].y = light->origin[1] - vpn[1] * rad;
-	out[vertcount].z = light->origin[2] - vpn[2] * rad;
-	vertcount++;
+	__asm__ (
+		".set		push\n"					// save assembler option
+		".set		noreorder\n"			// suppress reordering
+		"mfc1		$8, %1\n"				// FPU->CPU
+		"mtv		$8, S013\n"				// CPU->VFPU S013 = light->intensity
+		"lv.s		S010,  0 + %2\n"		// S010 = light->color[0]
+		"lv.s		S011,  4 + %2\n"		// S011 = light->color[1]
+		"lv.s		S012,  8 + %2\n"		// S012 = light->color[2]
+		"lv.s		S100,  0 + %3\n"		// S100 = light->origin[0]
+		"lv.s		S110,  4 + %3\n"		// S110 = light->origin[1]
+		"lv.s		S120,  8 + %3\n"		// S120 = light->origin[2]
+		"lv.s		S101,  0(%4)\n"			// S101 = vright[0]
+		"lv.s		S111,  4(%4)\n"			// S111 = vright[1]
+		"lv.s		S121,  8(%4)\n"			// S121 = vright[2]
+		"lv.s		S102,  0(%5)\n"			// S102 = vup[0]
+		"lv.s		S112,  4(%5)\n"			// S112 = vup[1]
+		"lv.s		S122,  8(%5)\n"			// S122 = vup[2]
+		"lv.s		S103,  0(%6)\n"			// S103 = vpn[0]
+		"lv.s		S113,  4(%6)\n"			// S113 = vpn[1]
+		"lv.s		S123,  8(%6)\n"			// S123 = vpn[2]
+		"vfim.s		S000, 0.2\n"			// S000 = 0.2
+		"vfim.s		S001, 0.35\n"			// S001 = 0.35
+		"vmul.q		C000, C000[X,X,X,Y], C010\n" // C000 = [light->color[*] * 0.2, light->intensity * 0.35]
+		"vmscl.t	E101, E101, S003\n"		// E101 = [vright, vup, vpn] *= light->intensity * 0.35
+		"viim.s		S003, 255\n"			// S003 = 255
+		"vsat0.t	C000, C000\n"			// C000 = saturation to [0:1](c000)
+		"vscl.t		C000, C000, S003\n"		// C000 = C000 * 255
+		"vf2iz.q	C000, C000, 23\n"		// C000 = (int)C000 * 2^23
+		"vi2uc.q	S000, C000\n"			// S000 = ((S003>>23)<<24) | ((S002>>23)<<16) | ((S001>>23)<<8) | (S000>>23)
+		"vsub.t		C001, R100, R103\n"		// C001 = light->origin[i] - vpn[i]*rad;
+		"sv.s		S000,  0 + %0\n"		// out[vertcount].c = S000
+		"sv.s		S001,  4 + %0\n"		// out[vertcount].x = S001
+		"sv.s		S002,  8 + %0\n"		// out[vertcount].y = S002
+		"sv.s		S003, 12 + %0\n"		// out[vertcount].z = S003
+		".set		pop\n"					// restore assembler option
+		:	"=m"(out[vertcount++])
+		:	"f"(light->intensity), "m"(*light->color), "m"(*light->origin), "r"(vright), "r"(vup), "r"(vpn)
+		:	"$8"
+	);
+	//vertcount++;
 
-	//vertcolor = GU_HCOLOR_3UB(0, 0, 0);
-	for (i=16 ; i>=0 ; i--)
+	for (i = 0; i < 17; i++)
 	{
-		a = (i / 16.0) * (M_PI * 2);
-
 		out[vertcount].c = 0xff000000;
-		out[vertcount].x = light->origin[0] + vright[0] * cos(a) * rad + vup[0] * sin(a) * rad;
-		out[vertcount].y = light->origin[1] + vright[1] * cos(a) * rad + vup[1] * sin(a) * rad;
-		out[vertcount].z = light->origin[2] + vright[2] * cos(a) * rad + vup[2] * sin(a) * rad;
-		vertcount++;
+		__asm__ (
+			".set		push\n"					// save assembler option
+			".set		noreorder\n"			// suppress reordering
+			"lv.s		S010,  0(%1)\n"			// S010 = dlighttab[i][0]
+			"lv.s		S011,  4(%1)\n"			// S011 = dlighttab[i][1]
+			"vhdp.t		S001, C010, C100[Z, Y, X]\n"	//S001 = light->origin[0] + vright[0] * dlighttab[i][1] * rad + vup[0] * dlighttab[i][0] * rad;
+			"vhdp.t		S002, C010, C110[Z, Y, X]\n"	//S002 = light->origin[1] + vright[1] * dlighttab[i][1] * rad + vup[1] * dlighttab[i][0] * rad;
+			"vhdp.t		S003, C010, C120[Z, Y, X]\n"	//S003 = light->origin[2] + vright[2] * dlighttab[i][1] * rad + vup[2] * dlighttab[i][0] * rad;
+			//"sv.s		S000,  0 + %0\n"		// out[vertcount].c = S000
+			"sv.s		S001,  4 + %0\n"		// out[vertcount].x = S001
+			"sv.s		S002,  8 + %0\n"		// out[vertcount].y = S002
+			"sv.s		S003, 12 + %0\n"		// out[vertcount].z = S003
+			".set		pop\n"					// restore assembler option
+			:	"=m"(out[vertcount++])
+			:	"r"(dlighttab[i])
+		);
 	}
 	sceGuDrawArray (GU_TRIANGLE_FAN, GU_COLOR_8888 | GU_VERTEX_32BITF, vertcount, 0, out);
 }

@@ -1475,8 +1475,6 @@ refexport_t GetRefAPI (refimport_t rimp )
 
 	re.AppActivate = GU_AppActivate;
 
-	Swap_Init ();
-
 	return re;
 }
 

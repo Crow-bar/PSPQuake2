@@ -92,6 +92,47 @@ void RotatePointAroundVector( vec3_t dst, const vec3_t dir, const vec3_t point, 
 
 void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 {
+#ifdef __psp__
+		vec4_t	vsin, vcos; // aligned on a 16-byte boundary
+
+		__asm__ (
+		".set		push\n"					// save assembler option
+		".set		noreorder\n"			// suppress reordering
+		"lv.s		S000,  0 + %2\n"		// S000 = angle[PITCH]
+		"lv.s		S001,  4 + %2\n"		// S001 = angle[YAW]
+		"lv.s		S002,  8 + %2\n"		// S002 = angle[ROLL]
+		"li			$8, 0x3c360b61\n"		// t0 = (1 / 90) = 0.0111111111111111	(lvi.s)
+		"mtv		$8, S010\n"				// S010 = t0 = (1 / 90)					(lvi.s)
+		"vscl.t		C000, C000, S010\n"		// angles[] * (1 / 90)
+		"vsin.t		C010, C000\n"			// C010 = sin(angle[])
+		"vcos.t		C020, C000\n"			// C020 = cos(angle[])
+		"sv.q		C010, %0\n"				// vsin = C010
+		"sv.q		C020, %1\n"				// vcos = C020
+		".set		pop\n"					// restore assembler option
+		:	"=m"(vsin), "=m"(vcos)
+		:	"m"(*angles)
+		:	"$8"
+	);
+
+	if (forward)
+	{
+		forward[0] = vcos[PITCH] * vcos[YAW];
+		forward[1] = vcos[PITCH] * vsin[YAW];
+		forward[2] = -vsin[PITCH];
+	}
+	if (right)
+	{
+		right[0] = (-1 * vsin[ROLL] * vsin[PITCH] * vcos[YAW] + -1 * vcos[ROLL] * -vsin[YAW]);
+		right[1] = (-1 * vsin[ROLL] * vsin[PITCH] * vsin[YAW] + -1 * vcos[ROLL] * vcos[YAW]);
+		right[2] = -1 * vsin[ROLL] * vcos[PITCH];
+	}
+	if (up)
+	{
+		up[0] = (vcos[ROLL] * vsin[PITCH] * vcos[YAW] + -vsin[ROLL] * -vsin[YAW]);
+		up[1] = (vcos[ROLL] * vsin[PITCH] * vsin[YAW] + -vsin[ROLL] * vcos[YAW]);
+		up[2] = vcos[ROLL] * vcos[PITCH];
+	}
+#else
 	float		angle;
 	static float		sr, sp, sy, cr, cp, cy;
 	// static to help MS compiler fp bugs
@@ -124,6 +165,7 @@ void AngleVectors (vec3_t angles, vec3_t forward, vec3_t right, vec3_t up)
 		up[1] = (cr*sp*sy+-sr*cy);
 		up[2] = cr*cp;
 	}
+#endif
 }
 
 
@@ -345,6 +387,7 @@ BoxOnPlaneSide
 Returns 1, 2, or 1 + 2
 ==================
 */
+#if !defined __psp__
 #if !id386 || defined __linux__ 
 int BoxOnPlaneSide (vec3_t emins, vec3_t emaxs, struct cplane_s *p)
 {
@@ -646,6 +689,7 @@ Lerror:
 }
 #pragma warning( default: 4035 )
 #endif
+#endif // !defined __psp__
 
 void ClearBounds (vec3_t mins, vec3_t maxs)
 {
@@ -669,7 +713,7 @@ void AddPointToBounds (vec3_t v, vec3_t mins, vec3_t maxs)
 }
 
 
-int VectorCompare (vec3_t v1, vec3_t v2)
+int _VectorCompare (vec3_t v1, vec3_t v2)
 {
 	if (v1[0] != v2[0] || v1[1] != v2[1] || v1[2] != v2[2])
 			return 0;
@@ -716,7 +760,7 @@ vec_t VectorNormalize2 (vec3_t v, vec3_t out)
 
 }
 
-void VectorMA (vec3_t veca, float scale, vec3_t vecb, vec3_t vecc)
+void _VectorMA (vec3_t veca, float scale, vec3_t vecb, vec3_t vecc)
 {
 	vecc[0] = veca[0] + scale*vecb[0];
 	vecc[1] = veca[1] + scale*vecb[1];
@@ -750,7 +794,7 @@ void _VectorCopy (vec3_t in, vec3_t out)
 	out[2] = in[2];
 }
 
-void CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross)
+void _CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross)
 {
 	cross[0] = v1[1]*v2[2] - v1[2]*v2[1];
 	cross[1] = v1[2]*v2[0] - v1[0]*v2[2];
@@ -772,14 +816,14 @@ vec_t VectorLength(vec3_t v)
 	return length;
 }
 
-void VectorInverse (vec3_t v)
+void _VectorInverse (vec3_t v)
 {
 	v[0] = -v[0];
 	v[1] = -v[1];
 	v[2] = -v[2];
 }
 
-void VectorScale (vec3_t in, vec_t scale, vec3_t out)
+void _VectorScale (vec3_t in, vec_t scale, vec3_t out)
 {
 	out[0] = in[0]*scale;
 	out[1] = in[1]*scale;
@@ -922,121 +966,6 @@ void COM_DefaultExtension (char *path, char *extension)
 
 	strcat (path, extension);
 }
-
-/*
-============================================================================
-
-					BYTE ORDER FUNCTIONS
-
-============================================================================
-*/
-
-qboolean	bigendien;
-
-// can't just use function pointers, or dll linkage can
-// mess up when qcommon is included in multiple places
-short	(*_BigShort) (short l);
-short	(*_LittleShort) (short l);
-int		(*_BigLong) (int l);
-int		(*_LittleLong) (int l);
-float	(*_BigFloat) (float l);
-float	(*_LittleFloat) (float l);
-
-short	BigShort(short l){return _BigShort(l);}
-short	LittleShort(short l) {return _LittleShort(l);}
-int		BigLong (int l) {return _BigLong(l);}
-int		LittleLong (int l) {return _LittleLong(l);}
-float	BigFloat (float l) {return _BigFloat(l);}
-float	LittleFloat (float l) {return _LittleFloat(l);}
-
-short   ShortSwap (short l)
-{
-	byte    b1,b2;
-
-	b1 = l&255;
-	b2 = (l>>8)&255;
-
-	return (b1<<8) + b2;
-}
-
-short	ShortNoSwap (short l)
-{
-	return l;
-}
-
-int    LongSwap (int l)
-{
-	byte    b1,b2,b3,b4;
-
-	b1 = l&255;
-	b2 = (l>>8)&255;
-	b3 = (l>>16)&255;
-	b4 = (l>>24)&255;
-
-	return ((int)b1<<24) + ((int)b2<<16) + ((int)b3<<8) + b4;
-}
-
-int	LongNoSwap (int l)
-{
-	return l;
-}
-
-float FloatSwap (float f)
-{
-	union
-	{
-		float	f;
-		byte	b[4];
-	} dat1, dat2;
-	
-	
-	dat1.f = f;
-	dat2.b[0] = dat1.b[3];
-	dat2.b[1] = dat1.b[2];
-	dat2.b[2] = dat1.b[1];
-	dat2.b[3] = dat1.b[0];
-	return dat2.f;
-}
-
-float FloatNoSwap (float f)
-{
-	return f;
-}
-
-/*
-================
-Swap_Init
-================
-*/
-void Swap_Init (void)
-{
-	byte	swaptest[2] = {1,0};
-
-// set the byte swapping variables in a portable manner	
-	if ( *(short *)swaptest == 1)
-	{
-		bigendien = false;
-		_BigShort = ShortSwap;
-		_LittleShort = ShortNoSwap;
-		_BigLong = LongSwap;
-		_LittleLong = LongNoSwap;
-		_BigFloat = FloatSwap;
-		_LittleFloat = FloatNoSwap;
-	}
-	else
-	{
-		bigendien = true;
-		_BigShort = ShortNoSwap;
-		_LittleShort = ShortSwap;
-		_BigLong = LongNoSwap;
-		_LittleLong = LongSwap;
-		_BigFloat = FloatNoSwap;
-		_LittleFloat = FloatSwap;
-	}
-
-}
-
-
 
 /*
 ============

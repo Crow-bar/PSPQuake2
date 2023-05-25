@@ -167,31 +167,38 @@ extern long Q_ftol( float f );
 #define Q_ftol( f ) ( long ) (f)
 #endif
 
+
+#define VectorCompare(a,b)		(a[0]==b[0]&&a[1]==b[1]&&a[2]==b[2])
+#define VectorMA(a,scale,b,c)	(c[0]=a[0]+(scale)*b[0],c[1]=a[1]+(scale)*b[1],c[2]=a[2]+(scale)*b[2])
 #define DotProduct(x,y)			(x[0]*y[0]+x[1]*y[1]+x[2]*y[2])
 #define VectorSubtract(a,b,c)	(c[0]=a[0]-b[0],c[1]=a[1]-b[1],c[2]=a[2]-b[2])
 #define VectorAdd(a,b,c)		(c[0]=a[0]+b[0],c[1]=a[1]+b[1],c[2]=a[2]+b[2])
 #define VectorCopy(a,b)			(b[0]=a[0],b[1]=a[1],b[2]=a[2])
+#define CrossProduct(a,b,c)		(c[0]=a[1]*b[2]-a[2]*b[1],c[1]=a[2]*b[0]-a[0]*b[2],c[2]=a[0]*b[1]-a[1]*b[0])
+#define VectorInverse(a)		(a[0]=-a[0],a[1]=-a[1],a[2]=-a[2])
+#define VectorScale(a,scale,c)	(c[0]=a[0]*(scale),c[1]=a[1]*(scale),c[2]=a[2]*(scale))
 #define VectorClear(a)			(a[0]=a[1]=a[2]=0)
 #define VectorNegate(a,b)		(b[0]=-a[0],b[1]=-a[1],b[2]=-a[2])
 #define VectorSet(v, x, y, z)	(v[0]=(x), v[1]=(y), v[2]=(z))
 
-void VectorMA (vec3_t veca, float scale, vec3_t vecb, vec3_t vecc);
 
 // just in case you do't want to use the macros
+int _VectorCompare (vec3_t v1, vec3_t v2);
+void _VectorMA (vec3_t veca, float scale, vec3_t vecb, vec3_t vecc);
 vec_t _DotProduct (vec3_t v1, vec3_t v2);
 void _VectorSubtract (vec3_t veca, vec3_t vecb, vec3_t out);
 void _VectorAdd (vec3_t veca, vec3_t vecb, vec3_t out);
 void _VectorCopy (vec3_t in, vec3_t out);
+void _CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross);
+void _VectorInverse (vec3_t v);
+void _VectorScale (vec3_t in, vec_t scale, vec3_t out);
 
 void ClearBounds (vec3_t mins, vec3_t maxs);
 void AddPointToBounds (vec3_t v, vec3_t mins, vec3_t maxs);
-int VectorCompare (vec3_t v1, vec3_t v2);
 vec_t VectorLength (vec3_t v);
-void CrossProduct (vec3_t v1, vec3_t v2, vec3_t cross);
 vec_t VectorNormalize (vec3_t v);		// returns vector length
 vec_t VectorNormalize2 (vec3_t v, vec3_t out);
-void VectorInverse (vec3_t v);
-void VectorScale (vec3_t in, vec_t scale, vec3_t out);
+
 int Q_log2(int val);
 
 void R_ConcatRotations (float in1[3][3], float in2[3][3], float out[3][3]);
@@ -249,14 +256,6 @@ int Q_strncasecmp (const char *s1, const char *s2, int n);
 
 //=============================================
 
-short	BigShort(short l);
-short	LittleShort(short l);
-int		BigLong (int l);
-int		LittleLong (int l);
-float	BigFloat (float l);
-float	LittleFloat (float l);
-
-void	Swap_Init (void);
 char	*va(char *format, ...);
 
 //=============================================
@@ -272,6 +271,88 @@ char *Info_ValueForKey (char *s, char *key);
 void Info_RemoveKey (char *s, char *key);
 void Info_SetValueForKey (char *s, char *key, char *value);
 qboolean Info_Validate (char *s);
+
+/*
+============================================================================
+
+					BYTE ORDER FUNCTIONS
+
+============================================================================
+*/
+
+#ifdef __psp__
+static inline __attribute__((const)) short ShortSwap(short val)
+{
+	asm("wsbh %0, %1\n" : "=r"(val) : "r"(val));
+	return val;
+}
+
+static inline __attribute__((const)) int LongSwap(int val)
+{
+	asm("wsbw %0, %1\n" : "=r"(val) : "r"(val));
+	return val;
+}
+
+static inline __attribute__((const)) float FloatSwap(float val) // !!!
+{
+	asm("wsbw %0, %0\n" : "=r"(val) : "r"(val));
+	return val;
+}
+#else
+static inline short ShortSwap (short l)
+{
+	byte    b1,b2;
+
+	b1 = l&255;
+	b2 = (l>>8)&255;
+
+	return (b1<<8) + b2;
+}
+
+static inline int LongSwap (int l)
+{
+	byte    b1,b2,b3,b4;
+
+	b1 = l&255;
+	b2 = (l>>8)&255;
+	b3 = (l>>16)&255;
+	b4 = (l>>24)&255;
+
+	return ((int)b1<<24) + ((int)b2<<16) + ((int)b3<<8) + b4;
+}
+
+static inline float FloatSwap (float f)
+{
+	union
+	{
+		float	f;
+		byte	b[4];
+	} dat1, dat2;
+
+	dat1.f = f;
+	dat2.b[0] = dat1.b[3];
+	dat2.b[1] = dat1.b[2];
+	dat2.b[2] = dat1.b[1];
+	dat2.b[3] = dat1.b[0];
+	return dat2.f;
+}
+#endif
+
+#ifdef BIG_ENDIAN
+#define BigShort(x)		(x)
+#define LittleShort(x)	ShortSwap(x)
+#define BigLong(x)		(x)
+#define LittleLong(x)	LongSwap(x)
+#define BigFloat(x)		(x)
+#define LittleFloat(x)	FloatSwap(x)
+#else
+#define BigShort(x)		ShortSwap(x)
+#define LittleShort(x)	(x)
+#define BigLong(x)		LongSwap(x)
+#define LittleLong(x)	(x)
+#define BigFloat(x)		FloatSwap(x)
+#define LittleFloat(x)	(x)
+#endif
 
 /*
 ==============================================================

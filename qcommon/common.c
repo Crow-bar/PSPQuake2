@@ -1349,7 +1349,6 @@ void Qcommon_Init (int argc, char **argv)
 
 	Memory_Init (HUNKSIZE);
 
-	Swap_Init ();
 	Cbuf_Init ();
 
 	Cmd_Init ();

@@ -188,6 +188,7 @@ QUAKE2_OBJS = \
 	$(PSP_DIR)/glob.o \
 	\
 	$(SHARED_DIR)/q_shared.o \
+	$(SHARED_DIR)/BOPS.o \
 	$(COMMON_DIR)/pmove.o
 
 VAUDIO_OBJS = $(PSP_DIR)/snd_psp_vaudio.o
@@ -458,6 +459,11 @@ clean2: clean
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	@echo "\033[38;5;142m"$(notdir $<)"\033[0m"
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.o: $(SRCDIR)/%.S
+	@echo "\033[38;5;152m"$(notdir $<)"\033[0m"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 

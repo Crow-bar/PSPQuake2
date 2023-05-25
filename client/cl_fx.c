@@ -1821,8 +1821,8 @@ void CL_FlyParticles (vec3_t origin, int count)
 	int			i;
 	cparticle_t	*p;
 	float		angle;
-	float		sr, sp, sy, cr, cp, cy;
-	vec3_t		forward;
+	float		sp, sy, cp, cy;
+	vec4_t		forward;	// aligned on a 16-byte boundary
 	float		dist = 64;
 	float		ltime;
 
@@ -1840,37 +1840,85 @@ void CL_FlyParticles (vec3_t origin, int count)
 		}
 	}
 
-
 	ltime = (float)cl.time / 1000.0;
+
+#ifdef __psp__
+	__asm__ volatile (
+		".set		push\n"					// save assembler option
+		".set		noreorder\n"			// suppress reordering
+		"lv.s		S102,  0 + %0\n"		// S102 = origin[0]
+		"lv.s		S112,  4 + %0\n"		// S112 = origin[1]
+		"lv.s		S122,  8 + %0\n"		// S122 = origin[2]
+		"mfc1		$8, %1\n"				// FPU->CPU
+		"mtv		$8, S012\n"				// CPU->VFPU S012 = ltime
+		"vfim.s		S013, 64.0\n"			// S013 = 64
+		"vfim.s		S030, "M_ATOS(BEAMLENGTH)".0\n"		// S030 = BEAMLENGTH
+		"vcst.s		S010, VFPU_2_PI\n"		// S010 = VFPU_2_PI = 2 / PI
+		"vmul.s		S011, S012, S010\n"		// S011 = ltime * 2 / PI
+		".set		pop\n"					// restore assembler option
+		::	"m"(*origin), "f"(ltime)
+		:	"$8"
+	);
+#endif
+
 	for (i=0 ; i<count ; i+=2)
 	{
+		if (!free_particles)
+			return;
+
+		p = free_particles;
+		free_particles = p->next;
+		p->next = active_particles;
+		active_particles = p;
+
+#ifdef __psp__
+		__asm__ volatile (
+			".set		push\n"					// save assembler option
+			".set		noreorder\n"			// suppress reordering
+			"lv.s		S022,  0 + %1\n"		// S022 = avelocities[i][0]
+			"lv.s		S023,  4 + %1\n"		// S023 = avelocities[i][1]
+			"lv.s		S101,  0 + %2\n"		// S101 = bytedirs[i][0]
+			"lv.s		S111,  4 + %2\n"		// S111 = bytedirs[i][1]
+			"lv.s		S121,  8 + %2\n"		// S121 = bytedirs[i][2]
+			"lv.s		S021, %3\n"				// S021 = i
+			"vi2f.s		S021, S021, 0\n"		// S021 = float(S022)
+			"vadd.s		S021, S012, S021\n"		// S021 = (ltime + i)
+			"vmul.t		C021, C021, C010[X,Y,Y]\n"	// C021 = (ltime + i) * 2 / PI, avelocities[i][] * ltime * 2 / PI
+			"vsin.t		C031, C021\n"			// C031 = sin(avelocities[i][] * ltime * 2 / PI)
+			"vcos.p		C020, C022\n"			// C020 = cos(avelocities[i][] * ltime * 2 / PI)
+			"vmul.s		S031, S031, S013\n"		// S031 = sin((ltime + i) * 2 / PI)*64
+			"vmul.s		S100, S021, S020\n"		// S100 = forward[0] = cp1*cy0
+			"vmul.s		S110, S021, S032\n"		// S110 = forward[1] = cp1*sy0
+			"vneg.s		S120, S033\n"			// S120 = forward[2] = -sp1
+			"vhdp.t		S000, C030, C100\n"		// S000 = BEAMLENGTH * forward[0] + dist * bytedirs[i][0] + origin[0]
+			"vhdp.t		S001, C030, C110\n"		// S001 = BEAMLENGTH * forward[1] + dist * bytedirs[i][1] + origin[1]
+			"vhdp.t		S002, C030, C120\n"		// S002 = BEAMLENGTH * forward[2] + dist * bytedirs[i][2] + origin[2]
+			"sv.s		S000, 0 + %0\n"			// p->org[0] = S000
+			"sv.s		S001, 4 + %0\n"			// p->org[1] = S001
+			"sv.s		S002, 8 + %0\n"			// p->org[2] = S002
+			".set		pop\n"					// restore assembler option
+			:	"=m"(*p->org)
+			:	"m"(*avelocities[i]), "m"(*bytedirs[i]), "m"(i)
+		);
+#else
 		angle = ltime * avelocities[i][0];
 		sy = sin(angle);
 		cy = cos(angle);
 		angle = ltime * avelocities[i][1];
 		sp = sin(angle);
 		cp = cos(angle);
-		angle = ltime * avelocities[i][2];
-		sr = sin(angle);
-		cr = cos(angle);
-	
+
 		forward[0] = cp*cy;
 		forward[1] = cp*sy;
 		forward[2] = -sp;
 
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-
 		dist = sin(ltime + i)*64;
+
 		p->org[0] = origin[0] + bytedirs[i][0]*dist + forward[0]*BEAMLENGTH;
 		p->org[1] = origin[1] + bytedirs[i][1]*dist + forward[1]*BEAMLENGTH;
 		p->org[2] = origin[2] + bytedirs[i][2]*dist + forward[2]*BEAMLENGTH;
+#endif
+		p->time = cl.time;
 
 		VectorClear (p->vel);
 		VectorClear (p->accel);
@@ -1945,8 +1993,66 @@ void CL_BfgParticles (entity_t *ent)
 
 
 	ltime = (float)cl.time / 1000.0;
+
+#ifdef __psp__
+	__asm__ volatile (
+		".set		push\n"					// save assembler option
+		".set		noreorder\n"			// suppress reordering
+		"lv.s		S102,  0 + %0\n"		// S102 = origin[0]
+		"lv.s		S112,  4 + %0\n"		// S112 = origin[1]
+		"lv.s		S122,  8 + %0\n"		// S122 = origin[2]
+		"mfc1		$8, %1\n"				// FPU->CPU
+		"mtv		$8, S012\n"				// CPU->VFPU S012 = ltime
+		"vfim.s		S013, 64.0\n"			// S013 = 64
+		"vfim.s		S030, "M_ATOS(BEAMLENGTH)".0\n"		// S030 = BEAMLENGTH
+		"vcst.s		S010, VFPU_2_PI\n"		// S010 = VFPU_2_PI = 2 / PI
+		"vmul.s		S011, S012, S010\n"		// S011 = ltime * 2 / PI
+		".set		pop\n"					// restore assembler option
+		::	"m"(*ent->origin), "f"(ltime)
+		:	"$8"
+	);
+#endif
+
 	for (i=0 ; i<NUMVERTEXNORMALS ; i++)
 	{
+		if (!free_particles)
+			return;
+
+		p = free_particles;
+		free_particles = p->next;
+		p->next = active_particles;
+		active_particles = p;
+
+#ifdef __psp__
+		__asm__ volatile (
+			".set		push\n"					// save assembler option
+			".set		noreorder\n"			// suppress reordering
+			"lv.s		S022,  0 + %1\n"		// S022 = avelocities[i][0]
+			"lv.s		S023,  4 + %1\n"		// S023 = avelocities[i][1]
+			"lv.s		S101,  0 + %2\n"		// S101 = bytedirs[i][0]
+			"lv.s		S111,  4 + %2\n"		// S111 = bytedirs[i][1]
+			"lv.s		S121,  8 + %2\n"		// S121 = bytedirs[i][2]
+			"lv.s		S021, %3\n"				// S021 = i
+			"vi2f.s		S021, S021, 0\n"		// S021 = float(S022)
+			"vadd.s		S021, S012, S021\n"		// S021 = (ltime + i)
+			"vmul.t		C021, C021, C010[X,Y,Y]\n"	// C021 = (ltime + i) * 2 / PI, avelocities[i][] * ltime * 2 / PI
+			"vsin.t		C031, C021\n"			// C031 = sin(avelocities[i][] * ltime * 2 / PI)
+			"vcos.p		C020, C022\n"			// C020 = cos(avelocities[i][] * ltime * 2 / PI)
+			"vmul.s		S031, S031, S013\n"		// S031 = sin((ltime + i) * 2 / PI)*64
+			"vmul.s		S100, S021, S020\n"		// S100 = forward[0] = cp1*cy0
+			"vmul.s		S110, S021, S032\n"		// S110 = forward[1] = cp1*sy0
+			"vneg.s		S120, S033\n"			// S120 = forward[2] = -sp1
+			"vhdp.t		S000, C030, C100\n"		// S000 = BEAMLENGTH * forward[0] + dist * bytedirs[i][0] + origin[0]
+			"vhdp.t		S001, C030, C110\n"		// S001 = BEAMLENGTH * forward[1] + dist * bytedirs[i][1] + origin[1]
+			"vhdp.t		S002, C030, C120\n"		// S002 = BEAMLENGTH * forward[2] + dist * bytedirs[i][2] + origin[2]
+			"sv.s		S000, 0 + %0\n"			// p->org[0] = S000
+			"sv.s		S001, 4 + %0\n"			// p->org[1] = S001
+			"sv.s		S002, 8 + %0\n"			// p->org[2] = S002
+			".set		pop\n"					// restore assembler option
+			:	"=m"(*p->org)
+			:	"m"(*avelocities[i]), "m"(*bytedirs[i]), "m"(i)
+		);
+#else
 		angle = ltime * avelocities[i][0];
 		sy = sin(angle);
 		cy = cos(angle);
@@ -1961,19 +2067,13 @@ void CL_BfgParticles (entity_t *ent)
 		forward[1] = cp*sy;
 		forward[2] = -sp;
 
-		if (!free_particles)
-			return;
-		p = free_particles;
-		free_particles = p->next;
-		p->next = active_particles;
-		active_particles = p;
-
-		p->time = cl.time;
-
 		dist = sin(ltime + i)*64;
 		p->org[0] = ent->origin[0] + bytedirs[i][0]*dist + forward[0]*BEAMLENGTH;
 		p->org[1] = ent->origin[1] + bytedirs[i][1]*dist + forward[1]*BEAMLENGTH;
 		p->org[2] = ent->origin[2] + bytedirs[i][2]*dist + forward[2]*BEAMLENGTH;
+#endif
+
+		p->time = cl.time;
 
 		VectorClear (p->vel);
 		VectorClear (p->accel);

@@ -145,7 +145,7 @@ void	MSG_ReadDir (sizebuf_t *sb, vec3_t vector);
 void	MSG_ReadData (sizebuf_t *sb, void *buffer, int size);
 
 //============================================================================
-
+/*
 extern	qboolean		bigendien;
 
 extern	short	BigShort (short l);
@@ -154,7 +154,7 @@ extern	int		BigLong (int l);
 extern	int		LittleLong (int l);
 extern	float	BigFloat (float l);
 extern	float	LittleFloat (float l);
-
+*/
 //============================================================================
 
 

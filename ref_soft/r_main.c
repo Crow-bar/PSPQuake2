@@ -1405,8 +1405,6 @@ refexport_t GetRefAPI (refimport_t rimp)
 
 	re.AppActivate = SWimp_AppActivate;
 
-	Swap_Init ();
-
 	return re;
 }
 
