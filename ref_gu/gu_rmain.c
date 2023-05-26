@@ -819,10 +819,14 @@ R_Clear
 */
 void R_Clear (void)
 {
+	int	cmask;
+
+	cmask = GU_DEPTH_BUFFER_BIT | GU_FAST_CLEAR_BIT;
+
 	if (gl_clear->value)
-		sceGuClear (GU_COLOR_BUFFER_BIT | GU_DEPTH_BUFFER_BIT | GU_FAST_CLEAR_BIT);
-	else
-		sceGuClear (GU_DEPTH_BUFFER_BIT | GU_FAST_CLEAR_BIT);
+		cmask |= GU_COLOR_BUFFER_BIT;
+
+	sceGuClear (cmask);
 
 	gldepthmin = 0;
 	gldepthmax = 65535;

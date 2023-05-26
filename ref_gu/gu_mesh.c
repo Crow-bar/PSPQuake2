@@ -36,11 +36,8 @@ float	r_avertexnormals[NUMVERTEXNORMALS][3] = {
 #include "anorms.h"
 };
 
-static	vec4_t	s_lerped[MAX_VERTS];
-//static	vec3_t	lerped[MAX_VERTS];
-
-vec3_t	shadevector;
-float	shadelight[3];
+static vec4_t	s_lerped[MAX_VERTS];
+static vec4_t	shadelight;
 
 // precalculated dot products for quantized angles
 #define SHADEDOT_QUANT 16
@@ -235,6 +232,21 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 
 	GL_LerpVerts( paliashdr->num_xyz, v, ov, verts, lerp, move, frontv, backv );
 
+	if (!(currententity->flags & ( RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE)))
+	{
+		__asm__ volatile (
+			".set		push\n"					// save assembler option
+			".set		noreorder\n"			// suppress reordering
+			"lv.q		C100,  %0\n"			// C100 = shadelight
+			"mfc1		$8, %1\n"				// FPU->CPU
+			"mtv		$8, S003\n"				// CPU->VFPU S003 = alpha
+			"viim.s		S010, 255\n"			// S103 = 255.0f
+			".set		pop\n"					// restore assembler option
+			:: "m"(*shadelight), "f"(alpha)
+			:	"$8"
+		);
+	}
+
 	while (1)
 	{
 		// get the vertex count and primitive type
@@ -277,7 +289,23 @@ void GL_DrawAliasFrameLerp (dmdl_t *paliashdr, float backlerp)
 
 				// normals and vertexes come from the frame list
 				l = shadedots[verts[index_xyz].lightnormalindex];
-				out[i].c = GU_HCOLOR_C4F (l*shadelight[0], l*shadelight[1], l*shadelight[2], alpha);
+
+				// color
+				__asm__ volatile (
+					".set		push\n"					// save assembler option
+					"lv.s		S011, %1\n"				// S010 = shadedots[verts[index_xyz].lightnormalindex]
+					"vscl.t		C000, C100, S011\n"		// C000 = l*shadelight[0], l*shadelight[1], l*shadelight[2]
+					"vsat0.q	C000, C000\n"			// C000 = saturation to [0:1](C000)
+					"vscl.q		C000, C000, S010\n"		// C000 = C000 * 255.0f
+					"vf2iz.q	C000, C000, 23\n"		// C000 = C000 * 2^23
+					"vi2uc.q	S000, C000\n"			// S000 = ((S003>>23)<<24) | ((S002>>23)<<16) | ((S001>>23)<<8) | (S000>>23)
+					"sv.s		S000, %0\n"				// out[i].c = S000
+					".set		pop\n"					// restore assembler option
+					:	"=m"(out[i].c)
+					:	"m"(shadedots[verts[index_xyz].lightnormalindex])
+				);
+
+				// vert
 				VectorCopy (s_lerped[index_xyz], out[i].xyz);
 			}
 			sceGuDrawArray (prim, GU_TEXTURE_32BITF | GU_COLOR_8888 | GU_VERTEX_32BITF, count, 0, out);
@@ -306,13 +334,19 @@ void GL_DrawAliasShadow (dmdl_t *paliashdr, int posenum)
 {
 	dtrivertx_t	*verts;
 	int		*order;
-	vec3_t	point;
-	float	height, lheight;
+	vec3_t	shadevector;
+	float	an, height, lheight;
 	int		count;
 	daliasframe_t	*frame;
 	int		i;
 	int		prim;
 	int		index;
+
+	an = currententity->angles[YAW] / 180 * M_PI;
+	shadevector[0] = cos (-an);
+	shadevector[1] = sin (-an);
+	shadevector[2] = 1;
+	VectorNormalize (shadevector);
 
 	lheight = currententity->origin[2] - lightspot[2];
 
@@ -352,13 +386,12 @@ void GL_DrawAliasShadow (dmdl_t *paliashdr, int posenum)
 			point[2] = verts[order[2]].v[2] * frame->scale[2] + frame->translate[2];
 */
 
-			memcpy( point, s_lerped[order[2]], sizeof( point )  );
+			memcpy( out[i].xyz, s_lerped[order[2]], sizeof( out->xyz )  );
 
-			point[0] -= shadevector[0]*(point[2]+lheight);
-			point[1] -= shadevector[1]*(point[2]+lheight);
-			point[2] = height;
+			out[i].xyz[0] -= shadevector[0] * (out[i].xyz[2] + lheight);
+			out[i].xyz[1] -= shadevector[1] * (out[i].xyz[2] + lheight);
+			out[i].xyz[2] = height;
 //			height -= 0.001;
-			VectorCopy (point, out[i].xyz);
 
 			order += 3;
 
@@ -681,34 +714,6 @@ void R_DrawAliasModel (entity_t *e)
 		}
 	}
 
-	if ( currententity->flags & RF_MINLIGHT )
-	{
-		for (i=0 ; i<3 ; i++)
-			if (shadelight[i] > 0.1)
-				break;
-		if (i == 3)
-		{
-			shadelight[0] = 0.1;
-			shadelight[1] = 0.1;
-			shadelight[2] = 0.1;
-		}
-	}
-
-	if ( currententity->flags & RF_GLOW )
-	{	// bonus items will pulse with time
-		float	scale;
-		float	min;
-
-		scale = 0.1 * sin(r_newrefdef.time*7);
-		for (i=0 ; i<3 ; i++)
-		{
-			min = shadelight[i] * 0.8;
-			shadelight[i] += scale;
-			if (shadelight[i] < min)
-				shadelight[i] = min;
-		}
-	}
-
 // =================
 // PGM	ir goggles color override
 	if ( r_newrefdef.rdflags & RDF_IRGOGGLES && currententity->flags & RF_IR_VISIBLE)
@@ -719,14 +724,38 @@ void R_DrawAliasModel (entity_t *e)
 	}
 // PGM
 // =================
+	else
+	{
+		if ( currententity->flags & RF_MINLIGHT )
+		{
+			for (i=0 ; i<3 ; i++)
+				if (shadelight[i] > 0.1)
+					break;
+			if (i == 3)
+			{
+				shadelight[0] = 0.1;
+				shadelight[1] = 0.1;
+				shadelight[2] = 0.1;
+			}
+		}
+
+		if ( currententity->flags & RF_GLOW )
+		{	// bonus items will pulse with time
+			float	scale;
+			float	min;
+
+			scale = 0.1 * sin(r_newrefdef.time*7);
+			for (i=0 ; i<3 ; i++)
+			{
+				min = shadelight[i] * 0.8;
+				shadelight[i] += scale;
+				if (shadelight[i] < min)
+					shadelight[i] = min;
+			}
+		}
+	}
 
 	shadedots = r_avertexnormal_dots[((int)(currententity->angles[1] * (SHADEDOT_QUANT / 360.0))) & (SHADEDOT_QUANT - 1)];
-
-	an = currententity->angles[1]/180*M_PI;
-	shadevector[0] = cos(-an);
-	shadevector[1] = sin(-an);
-	shadevector[2] = 1;
-	VectorNormalize (shadevector);
 
 	//
 	// locate the proper data
