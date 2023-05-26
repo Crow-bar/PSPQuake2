@@ -1209,7 +1209,12 @@ void R_BeginRegistration (char *model)
 
 	r_oldviewcluster = -1;		// force markleafs
 	Com_sprintf (fullname, sizeof(fullname), "maps/%s.bsp", model);
-	r_worldmodel = Mod_ForName(fullname, true);
+
+	// explicitly free the old map if different
+	// this guarantees that mod_known[0] is the world map
+	if (strcmp (mod_known[0].name, fullname))
+		Mod_Free (&mod_known[0]);
+	r_worldmodel = Mod_ForName (fullname, true);
 	r_viewcluster = -1;
 }
 
@@ -1287,8 +1292,14 @@ void Mod_Free (model_t *mod)
 		return;
 
 	mod->needload = nl_unreferenced;
-	if (mod->type != mod_alias)
-		memset (mod, 0, sizeof(*mod));
+	if (mod->type == mod_alias)
+	{
+		if (mod != &mod_known[0]) // worldmodel slot?
+			return;
+		ri.Cache_Free (&mod->cache);
+	}
+
+	memset (mod, 0, sizeof(*mod));
 }
 
 /*
