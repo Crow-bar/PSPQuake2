@@ -129,7 +129,7 @@ void SubdividePolygon (int numverts, float *verts)
 		SubdividePolygon (b, back[0]);
 		return;
 	}
-
+#if 0
 	// add a point in the center to help keep warp valid
 	poly = ri.Hunk_AllocName (sizeof(glpoly_t) + ((numverts + 1) * sizeof(gu_vert_ftv_t)), loadname);
 	poly->next = warpface->polys;
@@ -157,7 +157,22 @@ void SubdividePolygon (int numverts, float *verts)
 	poly->verts[0].v = total_t/numverts;
 
 	// copy first vertex to last
-	memcpy (&poly->verts[i + 1], &poly->verts[1], sizeof(poly->verts[0]));
+	memcpy (&poly->verts[i + 1], &poly->verts[1], sizeof(gu_vert_ftv_t));
+#else
+	poly = ri.Hunk_AllocName (sizeof(glpoly_t) + ((numverts - 1) * sizeof(gu_vert_ftv_t)), loadname);
+	poly->next = warpface->polys;
+	warpface->polys = poly;
+	poly->numverts = numverts;
+	for (i=0 ; i<numverts ; i++, verts+= 3)
+	{
+		VectorCopy (verts, poly->verts[i].xyz);
+		s = DotProduct (verts, warpface->texinfo->vecs[0]);
+		t = DotProduct (verts, warpface->texinfo->vecs[1]);
+
+		poly->verts[i].u = s;
+		poly->verts[i].v = t;
+	}
+#endif
 }
 
 /*
