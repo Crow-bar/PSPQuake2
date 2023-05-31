@@ -120,10 +120,13 @@ void	GL_ImageList_f (void)
 		if (image->texnum < 0)
 			continue;
 
-		if(image->flags & IMG_FLAG_INVRAM)
-			totalvr += image->size;
-		else
-			totalr += image->size;
+		if(!image->flags & IMG_FLAG_EXTERNAL)
+		{
+			if(image->flags & IMG_FLAG_INVRAM)
+				totalvr += image->size;
+			else
+				totalr += image->size;
+		}
 
 #ifdef USE_HASH_FOR_TEXTURES
 		if (image != gltextures_hash[i])
@@ -803,14 +806,14 @@ lighting range
 */
 void GL_LightScaleTexture (unsigned *in, int inwidth, int inheight, qboolean only_gamma )
 {
+	int		i, c;
+	byte	*p;
+
+	p = (byte *)in;
+
+	c = inwidth*inheight;
 	if ( only_gamma )
 	{
-		int		i, c;
-		byte	*p;
-
-		p = (byte *)in;
-
-		c = inwidth*inheight;
 		for (i=0 ; i<c ; i++, p+=4)
 		{
 			p[0] = gl_state.gammatable[p[0]];
@@ -820,12 +823,6 @@ void GL_LightScaleTexture (unsigned *in, int inwidth, int inheight, qboolean onl
 	}
 	else
 	{
-		int		i, c;
-		byte	*p;
-
-		p = (byte *)in;
-
-		c = inwidth*inheight;
 		for (i=0 ; i<c ; i++, p+=4)
 		{
 			p[0] = gl_state.gammatable[gl_state.intensitytable[p[0]]];
@@ -1192,6 +1189,41 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 
 /*
 ===============
+GL_UploadExternal
+===============
+*/
+void GL_UploadExternal (image_t *image, byte *pic, int width, int height)
+{
+	int			scaled_width, scaled_height;
+	qboolean	swizzle;
+	byte		*tempbuff;
+	int			i;
+	int			mark;
+
+	GL_SetTextureFormat (image);
+
+	image->width = image->uplwidth = width;
+	image->height = image->uplheight = height;
+	image->size = GL_CalcTextureSize (image->format, image->uplwidth, image->uplheight, &image->bpp);
+
+	if (!pic)
+		ri.Sys_Error (ERR_DROP, "GL_UploadExternal: %s without external buffer!\n", image->name);
+
+	if ((int)pic % 16 != 0) // check align
+		ri.Sys_Error (ERR_DROP, "GL_UploadExternal: %s texture buffer is not aligned to 16-bytes!\n", image->name);
+
+	if (image->bpp == 1)
+		image->flags |= IMG_FLAG_PALLETED;
+
+	image->data = pic;
+	image->sl = 0;
+	image->tl = 0;
+	image->sh = image->width;
+	image->th = image->height;
+}
+
+/*
+===============
 GL_UploadScrap
 ===============
 */
@@ -1308,16 +1340,21 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, int flags)
 	if (IMG_IS_SKIN(image) && IMG_IS_IND(image))
 		R_FloodFillSkin(pic, width, height);
 
+	// use external buffer
+	if (flags & IMG_FLAG_EXTERNAL)
+	{
+		GL_UploadExternal (image, pic, width, height);
+		return image;
+	}
+
 	// load little pics into the scrap
 	if (IMG_IS_PIC(image) && IMG_IS_IND(image) && width < 64 && height < 64)
 	{
-		if (!GL_UploadScrap (image, pic, width, height))
-			GL_UploadTexture (image, pic, width, height);
+		if (GL_UploadScrap (image, pic, width, height))
+			return image;
 	}
-	else
-		GL_UploadTexture (image, pic, width, height);
 
-
+	GL_UploadTexture (image, pic, width, height);
 
 	return image;
 }
@@ -1456,7 +1493,7 @@ void GL_FreeImage (image_t *image)
 #endif
 
 	// free it
-	if(image->data)
+	if(image->data && !(image->flags & IMG_FLAG_EXTERNAL))
 	{
 		if(image->flags & IMG_FLAG_INVRAM)
 			vfree(image->data);

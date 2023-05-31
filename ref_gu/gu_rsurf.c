@@ -29,9 +29,6 @@ static vec3_t	modelorg;		// relative to viewpoint
 
 msurface_t	*r_alpha_surfaces;
 
-#define DYNAMIC_LIGHT_WIDTH  128
-#define DYNAMIC_LIGHT_HEIGHT 128
-
 #define LIGHTMAP_BYTES 4
 
 #define	BLOCK_WIDTH		128
@@ -48,10 +45,11 @@ typedef struct
 	msurface_t	*lightmap_surfaces[MAX_LIGHTMAPS];
 
 	int			allocated[BLOCK_WIDTH];
+	int			allocated_max;
 
 	// the lightmap texture data needs to be kept in
 	// main memory so texsubimage can update properly
-	byte		lightmap_buffer[4*BLOCK_WIDTH*BLOCK_HEIGHT];
+	byte		lightmap_buffer[BLOCK_WIDTH*BLOCK_HEIGHT*LIGHTMAP_BYTES] __attribute__((aligned(16)));
 } gllightmapstate_t;
 
 static gllightmapstate_t gl_lms;
@@ -137,6 +135,7 @@ void DrawGLFlowingPoly (msurface_t *fa)
 {
 	glpoly_t		*p;
 	float			scroll;
+
 
 	p = fa->polys;
 
@@ -426,11 +425,10 @@ void R_RenderBrushPoly (msurface_t *fa)
 	c_brush_polys++;
 
 	image = R_TextureAnimation (fa->texinfo);
+	GL_Bind( image->texnum );
 
 	if (fa->flags & SURF_DRAWTURB)
 	{
-		GL_Bind( image->texnum );
-
 		// warp texture, no lightmaps
 		GL_TexEnv (GU_TFX_MODULATE);
 		sceGuColor (GU_HCOLOR_4F(
@@ -444,7 +442,6 @@ void R_RenderBrushPoly (msurface_t *fa)
 		return;
 	}
 
-	GL_Bind (image->texnum);
 	GL_TexEnv (GU_TFX_REPLACE);
 
 //======
@@ -479,27 +476,9 @@ dynamic:
 
 	if ( is_dynamic )
 	{
-		if ( ( fa->styles[maps] >= 32 || fa->styles[maps] == 0 ) && ( fa->dlightframe != r_framecount ) )
-		{
-			unsigned	temp[34*34];
-			int			smax, tmax;
-
-			smax = (fa->extents[0]>>4)+1;
-			tmax = (fa->extents[1]>>4)+1;
-
-			R_BuildLightMap( fa, (void *)temp, smax*4 );
-			R_SetCacheState( fa );
-#if 0
-			GL_UpdateTexture (gl_state.lightmap_textures[fa->lightmaptexturenum], fa->light_s, fa->light_t, smax, tmax, temp);
-#endif
-			fa->lightmapchain = gl_lms.lightmap_surfaces[fa->lightmaptexturenum];
-			gl_lms.lightmap_surfaces[fa->lightmaptexturenum] = fa;
-		}
-		else
-		{
-			fa->lightmapchain = gl_lms.lightmap_surfaces[0];
-			gl_lms.lightmap_surfaces[0] = fa;
-		}
+		// PSP: always using dynamic lightmap surfaces
+		fa->lightmapchain = gl_lms.lightmap_surfaces[0];
+		gl_lms.lightmap_surfaces[0] = fa;
 	}
 	else
 	{
@@ -1001,46 +980,37 @@ void R_MarkLeaves (void)
 
 =============================================================================
 */
-
 static void LM_InitBlock( void )
 {
 	memset( gl_lms.allocated, 0, sizeof( gl_lms.allocated ) );
+	gl_lms.allocated_max = 0;
 }
 
 static void LM_UploadBlock( qboolean dynamic )
 {
-	int		i, height;
 	char	lmname[16];
 
-	if ( dynamic )
+	if (dynamic)
 	{
-		height = 0;
-		for (i = 0; i < BLOCK_WIDTH; i++)
-		{
-			if ( gl_lms.allocated[i] > height )
-				height = gl_lms.allocated[i];
-		}
-		GL_UpdateTexture (gl_state.lightmap_textures[0], 0, 0, BLOCK_WIDTH, height, gl_lms.lightmap_buffer);
+		// prepare lightmap_buffer before rendering
+		sceKernelDcacheWritebackRange (gl_lms.lightmap_buffer, gl_lms.allocated_max * BLOCK_WIDTH * LIGHTMAP_BYTES);
+		return;
 	}
-	else
-	{
-		i = gl_lms.current_lightmap_texture;
 
-		snprintf(lmname, sizeof(lmname), "*lightmap_%i", i);
+	snprintf(lmname, sizeof(lmname), "*lightmap_%i", gl_lms.current_lightmap_texture);
 
-		gl_state.lightmap_textures[i] =
-			GL_LoadPic (lmname, gl_lms.lightmap_buffer, BLOCK_WIDTH, BLOCK_HEIGHT, IMG_TYPE_LM | IMG_FORMAT_RGBA_8888);
-		//gl_lms.internal_format
-		if ( ++gl_lms.current_lightmap_texture == MAX_LIGHTMAPS )
-			ri.Sys_Error( ERR_DROP, "LM_UploadBlock() - MAX_LIGHTMAPS exceeded\n" );
-	}
+	gl_state.lightmap_textures[gl_lms.current_lightmap_texture] =
+		GL_LoadPic (lmname, gl_lms.lightmap_buffer, BLOCK_WIDTH, BLOCK_HEIGHT, IMG_TYPE_LM | IMG_FORMAT_RGBA_8888);
+	//gl_lms.internal_format
+	if ( ++gl_lms.current_lightmap_texture == MAX_LIGHTMAPS )
+		ri.Sys_Error( ERR_DROP, "LM_UploadBlock() - MAX_LIGHTMAPS exceeded\n" );
 }
 
 // returns a texture number and the position inside it
 static qboolean LM_AllocBlock (int w, int h, int *x, int *y)
 {
 	int		i, j;
-	int		best, best2;
+	int		allocated, best, best2;
 
 	best = BLOCK_HEIGHT;
 
@@ -1062,11 +1032,16 @@ static qboolean LM_AllocBlock (int w, int h, int *x, int *y)
 		}
 	}
 
-	if (best + h > BLOCK_HEIGHT)
+	allocated = best + h;
+
+	if (allocated > BLOCK_HEIGHT)
 		return false;
 
+	if (gl_lms.allocated_max < allocated)
+		gl_lms.allocated_max = allocated;
+
 	for (i=0 ; i<w ; i++)
-		gl_lms.allocated[*x + i] = best + h;
+		gl_lms.allocated[*x + i] = allocated;
 
 	return true;
 }
@@ -1079,19 +1054,15 @@ GL_BuildPolygonFromSurface
 void GL_BuildPolygonFromSurface(msurface_t *fa)
 {
 	int			i, lindex, lnumverts;
-	medge_t		*pedges, *r_pedge;
-	int			vertpage;
+	medge_t		*pedges;
 	float		*vec;
 	float		s, t;
 	glpoly_t	*poly;
-	vec3_t		total;
 
-// reconstruct the polygon
+	// reconstruct the polygon
 	pedges = currentmodel->edges;
 	lnumverts = fa->numedges;
-	vertpage = 0;
 
-	VectorClear (total);
 	//
 	// draw texture
 	//
@@ -1106,44 +1077,32 @@ void GL_BuildPolygonFromSurface(msurface_t *fa)
 		lindex = currentmodel->surfedges[fa->firstedge + i];
 
 		if (lindex > 0)
-		{
-			r_pedge = &pedges[lindex];
-			vec = currentmodel->vertexes[r_pedge->v[0]].position;
-		}
+			vec = currentmodel->vertexes[pedges[lindex].v[0]].position;
 		else
-		{
-			r_pedge = &pedges[-lindex];
-			vec = currentmodel->vertexes[r_pedge->v[1]].position;
-		}
+			vec = currentmodel->vertexes[pedges[-lindex].v[1]].position;
+
 		s = DotProduct (vec, fa->texinfo->vecs[0]) + fa->texinfo->vecs[0][3];
-		s /= fa->texinfo->image->width;
-
 		t = DotProduct (vec, fa->texinfo->vecs[1]) + fa->texinfo->vecs[1][3];
-		t /= fa->texinfo->image->height;
 
-		VectorAdd (total, vec, total);
+		//VectorAdd (total, vec, total);
 		VectorCopy (vec, poly->verts[i].xyz);
-		poly->verts[i].u = s;
-		poly->verts[i].v = t;
+		poly->verts[i].u = s / fa->texinfo->image->width;
+		poly->verts[i].v = t / fa->texinfo->image->height;
 
 		//
 		// lightmap texture coordinates
 		//
-		s = DotProduct (vec, fa->texinfo->vecs[0]) + fa->texinfo->vecs[0][3];
 		s -= fa->texturemins[0];
 		s += fa->light_s*16;
 		s += 8;
-		s /= BLOCK_WIDTH*16; //fa->texinfo->texture->width;
 
-		t = DotProduct (vec, fa->texinfo->vecs[1]) + fa->texinfo->vecs[1][3];
 		t -= fa->texturemins[1];
 		t += fa->light_t*16;
 		t += 8;
-		t /= BLOCK_HEIGHT*16; //fa->texinfo->texture->height;
 
 		VectorCopy (vec, poly->verts[i + lnumverts].xyz);
-		poly->verts[i + lnumverts].u = s;
-		poly->verts[i + lnumverts].v = t;
+		poly->verts[i + lnumverts].u = s / (BLOCK_WIDTH * 16);
+		poly->verts[i + lnumverts].v = t / (BLOCK_HEIGHT * 16);
 	}
 
 	poly->numverts = lnumverts;
@@ -1184,6 +1143,7 @@ void GL_CreateSurfaceLightmap (msurface_t *surf)
 	R_SetCacheState( surf );
 	R_BuildLightMap (surf, base, BLOCK_WIDTH*LIGHTMAP_BYTES);
 }
+
 
 
 /*
@@ -1273,7 +1233,7 @@ void GL_BeginBuildingLightmaps (model_t *m)
 	** initialize the dynamic lightmap texture
 	*/
 	gl_state.lightmap_textures[0] =
-			GL_LoadPic ("*lightmap_0d", gl_lms.lightmap_buffer, BLOCK_WIDTH, BLOCK_HEIGHT, IMG_TYPE_LM | IMG_FORMAT_RGBA_8888 | IMG_FLAG_DYNAMIC);
+			GL_LoadPic ("*lightmap_0d", gl_lms.lightmap_buffer, BLOCK_WIDTH, BLOCK_HEIGHT, IMG_TYPE_LM | IMG_FORMAT_RGBA_8888 | IMG_FLAG_EXTERNAL);
 #endif
 }
 

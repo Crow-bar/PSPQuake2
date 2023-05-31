@@ -96,8 +96,9 @@ extern	viddef_t	vid;
 #define IMG_FLAG_SCRAP			0x00002000
 #define IMG_FLAG_HAS_ALPHA		0x00004000
 #define IMG_FLAG_DYNAMIC		0x00008000
-#define IMG_FLAG_PALLETED		0x00010000
-#define IMG_FLAG_MASK			0x0001f800
+#define IMG_FLAG_EXTERNAL		0x00010000
+#define IMG_FLAG_PALLETED		0x00020000
+#define IMG_FLAG_MASK			0x0003f800
 
 #define IMG_IS_IND(image)		(!((image)->flags & IMG_FORMAT_MASK) || ((image)->flags & IMG_FORMAT_IND_24))
 
@@ -213,12 +214,9 @@ extern cvar_t	*gl_ext_multitexture;
 extern cvar_t	*gl_ext_pointparameters;
 extern cvar_t	*gl_ext_compiled_vertex_array;
 
-extern cvar_t	*gl_particle_min_size;
-extern cvar_t	*gl_particle_max_size;
-extern cvar_t	*gl_particle_size;
-extern cvar_t	*gl_particle_att_a;
-extern cvar_t	*gl_particle_att_b;
-extern cvar_t	*gl_particle_att_c;
+
+extern cvar_t	*gl_particle_scale;
+
 
 extern	cvar_t	*gl_nosubimage;
 extern	cvar_t	*gl_bitdepth;

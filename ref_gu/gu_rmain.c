@@ -83,12 +83,7 @@ cvar_t	*gl_allow_software;
 
 cvar_t	*gl_vertex_arrays;
 
-cvar_t	*gl_particle_min_size;
-cvar_t	*gl_particle_max_size;
-cvar_t	*gl_particle_size;
-cvar_t	*gl_particle_att_a;
-cvar_t	*gl_particle_att_b;
-cvar_t	*gl_particle_att_c;
+cvar_t	*gl_particle_scale;
 
 cvar_t	*gl_ext_swapinterval;
 cvar_t	*gl_ext_palettedtexture;
@@ -460,9 +455,9 @@ void GL_DrawParticles( int num_particles, const particle_t particles[], const un
 			    ( p->origin[2] - r_origin[2] ) * vpn[2];
 
 		if (scale < 20)
-			scale = 1;
+			scale = gl_particle_scale->value;
 		else
-			scale = 1 + scale * 0.004f;
+			scale = gl_particle_scale->value + scale * 0.004f;
 
 		VectorScale (vup, scale, up);
 		VectorScale (vright, scale, right);
@@ -1032,12 +1027,7 @@ void R_Register( void )
 	gl_nosubimage = ri.Cvar_Get( "gl_nosubimage", "0", 0 );
 	gl_allow_software = ri.Cvar_Get( "gl_allow_software", "0", 0 );
 
-	gl_particle_min_size = ri.Cvar_Get( "gl_particle_min_size", "2", CVAR_ARCHIVE );
-	gl_particle_max_size = ri.Cvar_Get( "gl_particle_max_size", "40", CVAR_ARCHIVE );
-	gl_particle_size = ri.Cvar_Get( "gl_particle_size", "40", CVAR_ARCHIVE );
-	gl_particle_att_a = ri.Cvar_Get( "gl_particle_att_a", "0.01", CVAR_ARCHIVE );
-	gl_particle_att_b = ri.Cvar_Get( "gl_particle_att_b", "0.0", CVAR_ARCHIVE );
-	gl_particle_att_c = ri.Cvar_Get( "gl_particle_att_c", "0.01", CVAR_ARCHIVE );
+	gl_particle_scale = ri.Cvar_Get( "gl_particle_scale", "0.5", CVAR_ARCHIVE );
 
 	gl_modulate = ri.Cvar_Get ("gl_modulate", "1", CVAR_ARCHIVE );
 	gl_log = ri.Cvar_Get( "gl_log", "0", 0 );
