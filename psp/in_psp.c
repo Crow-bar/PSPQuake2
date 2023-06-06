@@ -38,21 +38,17 @@ enum AxisMode
 };
 
 static byte     joyAxisMap[IN_JOY_MAX_AXES];
-static float    joyCurveTable[IN_JOY_MAX_AXES][256];
+static float    joyCurveTable[256];
 
 cvar_t  *in_joystick;
 
-cvar_t  *joy_axisx;	
-cvar_t  *joy_axisx_dz_min;
-cvar_t  *joy_axisx_dz_max;
-cvar_t  *joy_axisx_cv_power;
-cvar_t  *joy_axisx_cv_expo;
+cvar_t  *joy_dz_min;
+cvar_t  *joy_dz_max;
+cvar_t  *joy_cv_power;
+cvar_t  *joy_cv_expo;
 
+cvar_t  *joy_axisx;
 cvar_t  *joy_axisy;
-cvar_t  *joy_axisy_dz_min;
-cvar_t  *joy_axisy_dz_max;
-cvar_t  *joy_axisy_cv_power;
-cvar_t  *joy_axisy_cv_expo;
 
 cvar_t  *joy_forwardsensitivity;
 cvar_t  *joy_sidesensitivity;
@@ -140,14 +136,42 @@ static float IN_JoyAxisCompute(float axis, float deadzone_min, float deadzone_ma
 
 	fabs_axis = abs_axis / 127.0f; // 0.0f - 1.0f
 
-	if(expo)
-	{
-		// x * ( x^power * expo + x * ( 1.0 - expo ))
-		fcurve = powf(fabs_axis, power) * expo + fabs_axis * (1.0f - expo);
-		fabs_axis *= fcurve;
-	}
+	if(expo && power > 1.0f) // x = ( x^power * expo + x * ( 1.0 - expo ))
+		fabs_axis = powf(fabs_axis, power) * expo + fabs_axis * (1.0f - expo);
 
 	return (flip_axis ? -fabs_axis :  fabs_axis);
+}
+
+/*
+===========
+IN_JoyRecompute
+===========
+*/
+void IN_JoyRecompute (void)
+{
+	int i;
+
+	for ( i = 0; i < 256; i++ )
+	{
+		joyCurveTable[i] = IN_JoyAxisCompute(i,
+			joy_dz_min->value, joy_dz_max->value,
+			joy_cv_power->value, joy_cv_expo->value);
+	}
+
+	joy_dz_min->modified = false;
+	joy_dz_max->modified = false;
+	joy_cv_power->modified = false;
+	joy_cv_expo->modified = false;
+}
+
+/*
+===========
+IN_JoyGetCurve
+===========
+*/
+const float *IN_JoyGetCurve (void)
+{
+	return joyCurveTable;
 }
 
 /*
@@ -159,44 +183,28 @@ void IN_Init (void)
 {
 	int i;
 
-	in_joystick         = Cvar_Get("in_joystick",           "1",    CVAR_ARCHIVE);
+	in_joystick             = Cvar_Get("in_joystick",            "1",    CVAR_ARCHIVE);
 
-	joy_axisx           = Cvar_Get("joy_axisx",             "4",    CVAR_ARCHIVE);
-	joy_axisx_dz_min    = Cvar_Get("joy_axisx_dz_min",      "15",   CVAR_ARCHIVE);
-	joy_axisx_dz_max    = Cvar_Get("joy_axisx_dz_max",      "0",    CVAR_ARCHIVE);
-	joy_axisx_cv_power  = Cvar_Get("joy_axisx_cv_power",    "2",    CVAR_ARCHIVE);
-	joy_axisx_cv_expo   = Cvar_Get("joy_axisx_cv_expo",     "0.5",  CVAR_ARCHIVE);
+	joy_dz_min              = Cvar_Get("joy_dz_min",             "15",   CVAR_ARCHIVE);
+	joy_dz_max              = Cvar_Get("joy_dz_max",             "0",    CVAR_ARCHIVE);
+	joy_cv_power            = Cvar_Get("joy_cv_power",           "2",    CVAR_ARCHIVE);
+	joy_cv_expo             = Cvar_Get("joy_cv_expo",            "0.5",  CVAR_ARCHIVE);
 
-	joy_axisy           = Cvar_Get("joy_axisy",             "2",    CVAR_ARCHIVE);
-	joy_axisy_dz_min    = Cvar_Get("joy_axisy_dz_min",      "15",   CVAR_ARCHIVE);
-	joy_axisy_dz_max    = Cvar_Get("joy_axisy_dz_max",      "0",    CVAR_ARCHIVE);
-	joy_axisy_cv_power  = Cvar_Get("joy_axisy_cv_power",    "2",    CVAR_ARCHIVE);
-	joy_axisy_cv_expo   = Cvar_Get("joy_axisy_cv_expo",     "0.5",  CVAR_ARCHIVE);
+	joy_axisx               = Cvar_Get("joy_axisx",              "4",    CVAR_ARCHIVE);
+	joy_axisy               = Cvar_Get("joy_axisy",              "2",    CVAR_ARCHIVE);
 
-	joy_forwardsensitivity  = Cvar_Get("joy_forwardsensitivity",    "-1",   0);
-	joy_sidesensitivity     = Cvar_Get("joy_sidesensitivity",       "-1",   0);
-	joy_upsensitivity       = Cvar_Get("joy_upsensitivity",         "-1",   0);
-	joy_pitchsensitivity    = Cvar_Get("joy_pitchsensitivity",      "1",    0);
-	joy_yawsensitivity      = Cvar_Get("joy_yawsensitivity",        "-1",   0);
+	joy_forwardsensitivity  = Cvar_Get("joy_forwardsensitivity", "-1",   CVAR_ARCHIVE);
+	joy_sidesensitivity     = Cvar_Get("joy_sidesensitivity",    "-1",   CVAR_ARCHIVE);
+	joy_upsensitivity       = Cvar_Get("joy_upsensitivity",      "-1",   CVAR_ARCHIVE);
+	joy_pitchsensitivity    = Cvar_Get("joy_pitchsensitivity",   "1",    CVAR_ARCHIVE);
+	joy_yawsensitivity      = Cvar_Get("joy_yawsensitivity",     "-1",   CVAR_ARCHIVE);
 
 	// set up the controller.
 	sceCtrlSetSamplingCycle( 0 );
 	sceCtrlSetSamplingMode( PSP_CTRL_MODE_ANALOG );
 
 	// building a joystick map
-	for ( i = 0; i < 256; i++ )
-	{
-		joyCurveTable[IN_JOY_AXIS_X][i] = IN_JoyAxisCompute(i,
-			joy_axisx_dz_min->value,
-			joy_axisx_dz_max->value,
-			joy_axisx_cv_power->value,
-			joy_axisx_cv_expo->value);
-		joyCurveTable[IN_JOY_AXIS_Y][i] = IN_JoyAxisCompute(i,
-			joy_axisy_dz_min->value,
-			joy_axisy_dz_max->value,
-			joy_axisy_cv_power->value,
-			joy_axisy_cv_expo->value);
-	}
+	IN_JoyRecompute ();
 
 	joyAxisMap[IN_JOY_AXIS_X] = ((int)joy_axisx->value) & 0x0f;
 	joyAxisMap[IN_JOY_AXIS_Y] = ((int)joy_axisy->value) & 0x0f;
@@ -304,13 +312,26 @@ static void IN_JoyUpdate(usercmd_t *cmd)
 
 	// verify joystick is available and that the user wants to use it
 	if (!in_joystick->value)
-		return; 
+		return;
+
+	if (joy_dz_min->modified || joy_dz_max->modified || joy_cv_power->modified || joy_cv_expo->modified)
+		IN_JoyRecompute ();
+
+	if (joy_axisx->modified || joy_axisy->modified)
+	{
+		joyAxisMap[IN_JOY_AXIS_X] = ((int)joy_axisx->value) & 0x0f;
+		joyAxisMap[IN_JOY_AXIS_Y] = ((int)joy_axisy->value) & 0x0f;
+
+		joy_axisx->modified = false;
+		joy_axisy->modified = false;
+	}
+
 
 	// collect the joystick data, if possible
 	sceCtrlPeekBufferPositive(&buf, 1);
 
-	axisValue[IN_JOY_AXIS_X] = joyCurveTable[IN_JOY_AXIS_X][buf.Lx];
-	axisValue[IN_JOY_AXIS_Y] = joyCurveTable[IN_JOY_AXIS_Y][buf.Ly];
+	axisValue[IN_JOY_AXIS_X] = joyCurveTable[buf.Lx];
+	axisValue[IN_JOY_AXIS_Y] = joyCurveTable[buf.Ly];
 
 	if ((in_speed.state & 1) ^ (int)cl_run->value)
 		speed = 2;
