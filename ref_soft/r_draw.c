@@ -417,6 +417,20 @@ void Draw_Fill (int x, int y, int w, int h, int c)
 		for (u=0 ; u<w ; u++)
 			dest[u] = c;
 }
+
+
+/*
+=============
+Draw_Line
+
+Bresenham's algorithm
+=============
+*/
+void Draw_Line (int x0, int y0, int x1, int y1, int c)
+{
+
+}
+
 //=============================================================================
 
 /*

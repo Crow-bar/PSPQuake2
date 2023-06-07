@@ -251,19 +251,11 @@ Fills a box of pixels with a single color
 */
 void Draw_Fill (int x, int y, int w, int h, int c)
 {
-	union
-	{
-		unsigned	c;
-		byte		v[4];
-	} color;
-
 	if ( (unsigned)c > 255)
 		ri.Sys_Error (ERR_FATAL, "Draw_Fill: bad color");
 
 	sceGuDisable (GU_TEXTURE_2D);
-
-	color.c = d_8to24table[c];
-	sceGuColor (GU_HCOLOR_3UBV(color.v));
+	sceGuColor (d_8to24table[c]);
 
 	gu_vert_hv_t* const out = (gu_vert_hv_t*)sceGuGetMemory (sizeof(gu_vert_hv_t) * 2);
 	out[0].x = x;
@@ -273,6 +265,33 @@ void Draw_Fill (int x, int y, int w, int h, int c)
 	out[1].y = y + h;
 	out[1].z = 0;
 	sceGuDrawArray (GU_SPRITES, GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, out);
+
+	sceGuColor (GU_HCOLOR_DEFAULT);
+	sceGuEnable (GU_TEXTURE_2D);
+}
+
+
+/*
+=============
+Draw_Line
+=============
+*/
+void Draw_Line (int x0, int y0, int x1, int y1, int c)
+{
+	if ( (unsigned)c > 255)
+		ri.Sys_Error (ERR_FATAL, "Draw_Fill: bad color");
+
+	sceGuDisable (GU_TEXTURE_2D);
+	sceGuColor (d_8to24table[c]);
+
+	gu_vert_hv_t* const out = (gu_vert_hv_t*)sceGuGetMemory (sizeof(gu_vert_hv_t) * 2);
+	out[0].x = x0;
+	out[0].y = y0;
+	out[0].z = 0;
+	out[1].x = x1;
+	out[1].y = y1;
+	out[1].z = 0;
+	sceGuDrawArray (GU_LINES, GU_VERTEX_16BIT | GU_TRANSFORM_2D, 2, 0, out);
 
 	sceGuColor (GU_HCOLOR_DEFAULT);
 	sceGuEnable (GU_TEXTURE_2D);

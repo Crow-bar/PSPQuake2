@@ -45,6 +45,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define QMF_LEFT_JUSTIFY	0x00000001
 #define QMF_GRAYED			0x00000002
 #define QMF_NUMBERSONLY		0x00000004
+#define QMF_INACTIVE		0x00000008
 
 typedef struct _tag_menuframework
 {

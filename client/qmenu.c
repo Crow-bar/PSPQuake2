@@ -88,7 +88,16 @@ void Field_Draw( menufield_s *f )
 	char tempbuffer[128]="";
 
 	if ( f->generic.name )
-		Menu_DrawStringR2LDark( f->generic.x + f->generic.parent->x + LCOLUMN_OFFSET, f->generic.y + f->generic.parent->y, f->generic.name );
+	{
+		if ( f->generic.flags & QMF_INACTIVE )
+		{
+			Menu_DrawStringR2L( f->generic.x + f->generic.parent->x + LCOLUMN_OFFSET, f->generic.y + f->generic.parent->y, f->generic.name );
+		}
+		else
+		{
+			Menu_DrawStringR2LDark( f->generic.x + f->generic.parent->x + LCOLUMN_OFFSET, f->generic.y + f->generic.parent->y, f->generic.name );
+		}
+	}
 
 	strncpy( tempbuffer, f->buffer + f->visible_offset, f->visible_length );
 
@@ -298,7 +307,7 @@ void Menu_AdjustCursor( menuframework_s *m, int dir )
 	{
 		if ( ( citem = Menu_ItemAtCursor( m ) ) != 0 )
 		{
-			if ( citem->type != MTYPE_SEPARATOR )
+			if ( citem->type != MTYPE_SEPARATOR && !( citem->flags & QMF_INACTIVE ) )
 				return;
 		}
 	}
@@ -313,7 +322,7 @@ void Menu_AdjustCursor( menuframework_s *m, int dir )
 		{
 			citem = Menu_ItemAtCursor( m );
 			if ( citem )
-				if ( citem->type != MTYPE_SEPARATOR )
+				if ( citem->type != MTYPE_SEPARATOR && !( citem->flags & QMF_INACTIVE ) )
 					break;
 			m->cursor += dir;
 			if ( m->cursor >= m->nitems )
@@ -326,7 +335,7 @@ void Menu_AdjustCursor( menuframework_s *m, int dir )
 		{
 			citem = Menu_ItemAtCursor( m );
 			if ( citem )
-				if ( citem->type != MTYPE_SEPARATOR )
+				if ( citem->type != MTYPE_SEPARATOR && !( citem->flags & QMF_INACTIVE ) )
 					break;
 			m->cursor += dir;
 			if ( m->cursor < 0 )
@@ -572,7 +581,14 @@ void MenuList_Draw( menulist_s *l )
 	const char **n;
 	int y = 0;
 
-	Menu_DrawStringR2LDark( l->generic.x + l->generic.parent->x + LCOLUMN_OFFSET, l->generic.y + l->generic.parent->y, l->generic.name );
+	if ( l->generic.flags & QMF_INACTIVE )
+	{
+		Menu_DrawStringR2L( l->generic.x + l->generic.parent->x + LCOLUMN_OFFSET, l->generic.y + l->generic.parent->y, l->generic.name );
+	}
+	else
+	{
+		Menu_DrawStringR2LDark( l->generic.x + l->generic.parent->x + LCOLUMN_OFFSET, l->generic.y + l->generic.parent->y, l->generic.name );
+	}
 
 	n = l->itemnames;
 
@@ -611,9 +627,18 @@ void Slider_Draw( menuslider_s *s )
 {
 	int	i;
 
-	Menu_DrawStringR2LDark( s->generic.x + s->generic.parent->x + LCOLUMN_OFFSET,
-		                s->generic.y + s->generic.parent->y, 
-						s->generic.name );
+	if ( s->generic.flags & QMF_INACTIVE )
+	{
+		Menu_DrawStringR2L( s->generic.x + s->generic.parent->x + LCOLUMN_OFFSET,
+							s->generic.y + s->generic.parent->y,
+							s->generic.name );
+	}
+	else
+	{
+		Menu_DrawStringR2LDark( s->generic.x + s->generic.parent->x + LCOLUMN_OFFSET,
+							s->generic.y + s->generic.parent->y,
+							s->generic.name );
+	}
 
 	s->range = ( s->curvalue - s->minvalue ) / ( float ) ( s->maxvalue - s->minvalue );
 
@@ -625,7 +650,8 @@ void Slider_Draw( menuslider_s *s )
 	for ( i = 0; i < SLIDER_RANGE; i++ )
 		Draw_Char( RCOLUMN_OFFSET + s->generic.x + i*8 + s->generic.parent->x + 8, s->generic.y + s->generic.parent->y, 129);
 	Draw_Char( RCOLUMN_OFFSET + s->generic.x + i*8 + s->generic.parent->x + 8, s->generic.y + s->generic.parent->y, 130);
-	Draw_Char( ( int ) ( 8 + RCOLUMN_OFFSET + s->generic.parent->x + s->generic.x + (SLIDER_RANGE-1)*8 * s->range ), s->generic.y + s->generic.parent->y, 131);
+	if ( !( s->generic.flags & QMF_INACTIVE ) )
+		Draw_Char( ( int ) ( 8 + RCOLUMN_OFFSET + s->generic.parent->x + s->generic.x + (SLIDER_RANGE-1)*8 * s->range ), s->generic.y + s->generic.parent->y, 131);
 }
 
 void SpinControl_DoEnter( menulist_s *s )
@@ -657,9 +683,18 @@ void SpinControl_Draw( menulist_s *s )
 
 	if ( s->generic.name )
 	{
-		Menu_DrawStringR2LDark( s->generic.x + s->generic.parent->x + LCOLUMN_OFFSET, 
-							s->generic.y + s->generic.parent->y, 
-							s->generic.name );
+		if ( s->generic.flags & QMF_INACTIVE )
+		{
+			Menu_DrawStringR2L( s->generic.x + s->generic.parent->x + LCOLUMN_OFFSET,
+								s->generic.y + s->generic.parent->y,
+								s->generic.name );
+		}
+		else
+		{
+			Menu_DrawStringR2LDark( s->generic.x + s->generic.parent->x + LCOLUMN_OFFSET,
+								s->generic.y + s->generic.parent->y,
+								s->generic.name );
+		}
 	}
 	if ( !strchr( s->itemnames[s->curvalue], '\n' ) )
 	{

@@ -362,6 +362,49 @@ void M_DrawTextBox (int x, int y, int width, int lines)
 	M_DrawCharacter (cx, cy+8, 9);
 }
 
+/*
+=============
+M_DrawGraph
+=============
+*/
+void M_DrawGraph (int x, int y, int width, int height, float min, float max, int graphsize, const float *graph)
+{
+	int		i;
+	float	yscale;
+	uint	frac, fracstep;
+	int		x0, y0, x1, y1;
+
+	// fill box
+	re.DrawFill (x, y, width, height, 40);
+
+	// up / buttom lines
+	re.DrawLine (x, y, x + width, y, 152);
+	re.DrawLine (x + width, y + height, x, y + height, 152);
+
+	// left / right lines
+	re.DrawLine (x, y + height, x, y, 152);
+	re.DrawLine (x + width, y, x + width, y + height, 152);
+
+	// center lines
+	re.DrawLine (x + width * 0.5, y, x + width * 0.5, y + height, 152);
+	re.DrawLine (x, y + height * 0.5, x + width, y + height * 0.5, 152);
+
+	fracstep = (graphsize << 16) / width;
+	yscale = height / (max - min);
+
+	for (i = 0, frac = 0; i <= width; i++, frac += fracstep)
+	{
+		x1 = x + i;
+		y1 = y + height - (int)((graph[frac >> 16] - min) * yscale);
+
+		if (i > 0)
+			re.DrawLine (x0, y0, x1, y1, 211);
+
+		x0 = x1;
+		y0 = y1;
+	}
+}
+
 
 /*
 =======================================================================
@@ -1141,6 +1184,300 @@ void M_Menu_Keys_f (void)
 /*
 =======================================================================
 
+JOYSTICK MENU
+
+=======================================================================
+*/
+#ifdef __psp__
+static menuframework_s	s_joy_menu;
+static menulist_s		s_joy_axisx_list;
+static menuslider_s		s_joy_axisx_sensitivity_slider;
+static menulist_s		s_joy_axisx_inv_box;
+
+static menulist_s		s_joy_axisy_list;
+static menuslider_s		s_joy_axisy_sensitivity_slider;
+static menulist_s		s_joy_axisy_inv_box;
+
+static menuslider_s		s_joy_dz_min_slider;
+static menuslider_s		s_joy_dz_max_slider;
+static menuslider_s		s_joy_cv_power_slider;
+static menuslider_s		s_joy_cv_expo_slider;
+
+const char *joy_sensitivity_cvars[] =
+{
+	"",
+	"joy_forwardsensitivity",
+	"joy_pitchsensitivity",
+	"joy_sidesensitivity",
+	"joy_yawsensitivity",
+	"joy_upsensitivity"
+};
+
+static void UpdateAxisXFunc( void *unused )
+{
+	float	joy_sensitivity_val;
+
+	if (s_joy_axisx_list.curvalue)
+	{
+		joy_sensitivity_val = Cvar_VariableValue( joy_sensitivity_cvars[s_joy_axisx_list.curvalue] );
+		s_joy_axisx_sensitivity_slider.generic.flags &= ~QMF_INACTIVE;
+		s_joy_axisx_sensitivity_slider.curvalue	= fabsf( joy_sensitivity_val ) * 10;
+		s_joy_axisx_inv_box.generic.flags &= ~QMF_INACTIVE;
+		s_joy_axisx_inv_box.curvalue = ( joy_sensitivity_val < 0.0f );
+	}
+	else
+	{
+		s_joy_axisx_sensitivity_slider.generic.flags |= QMF_INACTIVE;
+		s_joy_axisx_sensitivity_slider.curvalue	= 0;
+		s_joy_axisx_inv_box.generic.flags |= QMF_INACTIVE;
+		s_joy_axisx_inv_box.curvalue = 0;
+	}
+
+	Cvar_SetValue( "joy_axisx", s_joy_axisx_list.curvalue );
+}
+static void UpdateSensitivityXFunc( void *unused )
+{
+	if( s_joy_axisx_inv_box.curvalue )
+		Cvar_SetValue( joy_sensitivity_cvars[s_joy_axisx_list.curvalue], -s_joy_axisx_sensitivity_slider.curvalue * 0.1 );
+	else
+		Cvar_SetValue( joy_sensitivity_cvars[s_joy_axisx_list.curvalue], s_joy_axisx_sensitivity_slider.curvalue * 0.1 );
+
+	if (s_joy_axisx_list.curvalue == s_joy_axisy_list.curvalue)
+	{
+		s_joy_axisy_sensitivity_slider.curvalue = s_joy_axisx_sensitivity_slider.curvalue;
+		s_joy_axisy_inv_box.curvalue = s_joy_axisx_inv_box.curvalue;
+	}
+}
+
+static void UpdateAxisYFunc( void *unused )
+{
+	float	joy_sensitivity_val;
+
+	if (s_joy_axisy_list.curvalue)
+	{
+		joy_sensitivity_val = Cvar_VariableValue( joy_sensitivity_cvars[s_joy_axisy_list.curvalue] );
+		s_joy_axisy_sensitivity_slider.generic.flags &= ~QMF_INACTIVE;
+		s_joy_axisy_sensitivity_slider.curvalue	= fabsf( joy_sensitivity_val ) * 10;
+		s_joy_axisy_inv_box.generic.flags &= ~QMF_INACTIVE;
+		s_joy_axisy_inv_box.curvalue = ( joy_sensitivity_val < 0.0f );
+	}
+	else
+	{
+		s_joy_axisy_sensitivity_slider.generic.flags |= QMF_INACTIVE;
+		s_joy_axisy_sensitivity_slider.curvalue	= 0;
+		s_joy_axisy_inv_box.generic.flags |= QMF_INACTIVE;
+		s_joy_axisy_inv_box.curvalue = 0;
+	}
+
+	Cvar_SetValue( "joy_axisy", s_joy_axisy_list.curvalue );
+}
+static void UpdateSensitivityYFunc( void *unused )
+{
+	if( s_joy_axisy_inv_box.curvalue )
+		Cvar_SetValue( joy_sensitivity_cvars[s_joy_axisy_list.curvalue], -s_joy_axisy_sensitivity_slider.curvalue * 0.1 );
+	else
+		Cvar_SetValue( joy_sensitivity_cvars[s_joy_axisy_list.curvalue], s_joy_axisy_sensitivity_slider.curvalue * 0.1 );
+
+	if (s_joy_axisy_list.curvalue == s_joy_axisx_list.curvalue)
+	{
+		s_joy_axisx_sensitivity_slider.curvalue = s_joy_axisy_sensitivity_slider.curvalue;
+		s_joy_axisx_inv_box.curvalue = s_joy_axisy_inv_box.curvalue;
+	}
+}
+
+static void UpdateDzMinFunc( void *unused )
+{
+	Cvar_SetValue( "joy_dz_min", s_joy_dz_min_slider.curvalue );
+}
+static void UpdateDzMaxFunc( void *unused )
+{
+	Cvar_SetValue( "joy_dz_max", s_joy_dz_max_slider.curvalue );
+}
+static void UpdateCvPowerFunc( void *unused )
+{
+	Cvar_SetValue( "joy_cv_power", s_joy_cv_power_slider.curvalue );
+}
+static void UpdateCvExpoFunc( void *unused )
+{
+	Cvar_SetValue( "joy_cv_expo", s_joy_cv_expo_slider.curvalue * 0.025 );
+}
+
+
+void Joy_MenuInit( void )
+{
+	int		position_y;
+	float	joy_sensitivity_val;
+
+	static const char *yesno_names[] =
+	{
+		"no",
+		"yes",
+		0
+	};
+
+	static const char *joy_axis_items[] =
+	{
+		"None", "Forward", "Look", "Side", "Turn", "Up", 0
+	};
+
+	/*
+	** configure controls menu and menu items
+	*/
+	s_joy_menu.x = viddef.width / 2;
+	s_joy_menu.y = viddef.height / 2 - 58;
+	s_joy_menu.nitems = 0;
+
+	position_y = 0;
+
+	s_joy_axisx_list.generic.type					= MTYPE_SPINCONTROL;
+	s_joy_axisx_list.generic.x						= 0;
+	s_joy_axisx_list.generic.y						= position_y;
+	s_joy_axisx_list.generic.name					= "Axis X";
+	s_joy_axisx_list.generic.callback				= UpdateAxisXFunc;
+	s_joy_axisx_list.itemnames						= joy_axis_items;
+	s_joy_axisx_list.curvalue						= Cvar_VariableValue( "joy_axisx" );
+
+	position_y += 10;
+
+	joy_sensitivity_val = Cvar_VariableValue( joy_sensitivity_cvars[s_joy_axisx_list.curvalue] );
+
+	s_joy_axisx_sensitivity_slider.generic.type		= MTYPE_SLIDER;
+	s_joy_axisx_sensitivity_slider.generic.flags	= (s_joy_axisx_list.curvalue ? 0 : QMF_INACTIVE);
+	s_joy_axisx_sensitivity_slider.generic.x		= 0;
+	s_joy_axisx_sensitivity_slider.generic.y		= position_y;
+	s_joy_axisx_sensitivity_slider.generic.name		= "Sensitivity X";
+	s_joy_axisx_sensitivity_slider.generic.callback	= UpdateSensitivityXFunc;
+	s_joy_axisx_sensitivity_slider.minvalue			= 0;
+	s_joy_axisx_sensitivity_slider.maxvalue			= 10;
+	s_joy_axisx_sensitivity_slider.curvalue			= fabsf( joy_sensitivity_val ) * 10;
+
+	position_y += 10;
+
+	s_joy_axisx_inv_box.generic.type				= MTYPE_SPINCONTROL;
+	s_joy_axisx_inv_box.generic.flags				= (s_joy_axisx_list.curvalue ? 0 : QMF_INACTIVE);
+	s_joy_axisx_inv_box.generic.x					= 0;
+	s_joy_axisx_inv_box.generic.y					= position_y;
+	s_joy_axisx_inv_box.generic.name				= "Inv X";
+	s_joy_axisx_inv_box.generic.callback			= UpdateSensitivityXFunc;
+	s_joy_axisx_inv_box.itemnames					= yesno_names;
+	s_joy_axisx_inv_box.curvalue					= ( joy_sensitivity_val < 0.0f );
+
+	position_y += 20;
+
+	s_joy_axisy_list.generic.type					= MTYPE_SPINCONTROL;
+	s_joy_axisy_list.generic.x						= 0;
+	s_joy_axisy_list.generic.y						= position_y;
+	s_joy_axisy_list.generic.name					= "Axis Y";
+	s_joy_axisy_list.generic.callback				= UpdateAxisYFunc;
+	s_joy_axisy_list.itemnames						= joy_axis_items;
+	s_joy_axisy_list.curvalue						= Cvar_VariableValue( "joy_axisy" );
+
+	position_y += 10;
+
+	joy_sensitivity_val = Cvar_VariableValue( joy_sensitivity_cvars[s_joy_axisy_list.curvalue] );
+
+	s_joy_axisy_sensitivity_slider.generic.type		= MTYPE_SLIDER;
+	s_joy_axisy_sensitivity_slider.generic.flags	= (s_joy_axisy_list.curvalue ? 0 : QMF_INACTIVE);
+	s_joy_axisy_sensitivity_slider.generic.x		= 0;
+	s_joy_axisy_sensitivity_slider.generic.y		= position_y;
+	s_joy_axisy_sensitivity_slider.generic.name		= "Sensitivity Y";
+	s_joy_axisy_sensitivity_slider.generic.callback	= UpdateSensitivityYFunc;
+	s_joy_axisy_sensitivity_slider.minvalue			= 0;
+	s_joy_axisy_sensitivity_slider.maxvalue			= 10;
+	s_joy_axisy_sensitivity_slider.curvalue			= fabsf( joy_sensitivity_val ) * 10;
+
+	position_y += 10;
+
+	s_joy_axisy_inv_box.generic.type				= MTYPE_SPINCONTROL;
+	s_joy_axisy_inv_box.generic.flags				= (s_joy_axisy_list.curvalue ? 0 : QMF_INACTIVE);
+	s_joy_axisy_inv_box.generic.x					= 0;
+	s_joy_axisy_inv_box.generic.y					= position_y;
+	s_joy_axisy_inv_box.generic.name				= "Inv Y";
+	s_joy_axisy_inv_box.generic.callback			= UpdateSensitivityYFunc;
+	s_joy_axisy_inv_box.itemnames					= yesno_names;
+	s_joy_axisy_inv_box.curvalue					= ( joy_sensitivity_val < 0.0f );
+
+	position_y += 20;
+
+	s_joy_dz_min_slider.generic.type				= MTYPE_SLIDER;
+	s_joy_dz_min_slider.generic.x					= 0;
+	s_joy_dz_min_slider.generic.y					= position_y;
+	s_joy_dz_min_slider.generic.name				= "Deadzone min";
+	s_joy_dz_min_slider.generic.callback			= UpdateDzMinFunc;
+	s_joy_dz_min_slider.minvalue					= 0;
+	s_joy_dz_min_slider.maxvalue					= 32;
+	s_joy_dz_min_slider.curvalue					= Cvar_VariableValue( "joy_dz_min" );
+
+	position_y += 10;
+
+	s_joy_dz_max_slider.generic.type				= MTYPE_SLIDER;
+	s_joy_dz_max_slider.generic.x					= 0;
+	s_joy_dz_max_slider.generic.y					= position_y;
+	s_joy_dz_max_slider.generic.name				= "Deadzone max";
+	s_joy_dz_max_slider.generic.callback			= UpdateDzMaxFunc;
+	s_joy_dz_max_slider.minvalue					= 0;
+	s_joy_dz_max_slider.maxvalue					= 32;
+	s_joy_dz_max_slider.curvalue					= Cvar_VariableValue( "joy_dz_max" );
+
+	position_y += 10;
+
+	s_joy_cv_power_slider.generic.type				= MTYPE_SLIDER;
+	s_joy_cv_power_slider.generic.x					= 0;
+	s_joy_cv_power_slider.generic.y					= position_y;
+	s_joy_cv_power_slider.generic.name				= "Cv power";
+	s_joy_cv_power_slider.generic.callback			= UpdateCvPowerFunc;
+	s_joy_cv_power_slider.minvalue					= 2;
+	s_joy_cv_power_slider.maxvalue					= 10;
+	s_joy_cv_power_slider.curvalue					= Cvar_VariableValue( "joy_cv_power" );
+
+	position_y += 10;
+
+	s_joy_cv_expo_slider.generic.type				= MTYPE_SLIDER;
+	s_joy_cv_expo_slider.generic.x					= 0;
+	s_joy_cv_expo_slider.generic.y					= position_y;
+	s_joy_cv_expo_slider.generic.name				= "Cv expo";
+	s_joy_cv_expo_slider.generic.callback			= UpdateCvExpoFunc;
+	s_joy_cv_expo_slider.minvalue					= 0;
+	s_joy_cv_expo_slider.maxvalue					= 40;
+	s_joy_cv_expo_slider.curvalue					= Cvar_VariableValue( "joy_cv_expo" ) * 40;
+
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisx_list );
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisx_sensitivity_slider );
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisx_inv_box );
+
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisy_list );
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisy_sensitivity_slider );
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisy_inv_box );
+
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_dz_min_slider );
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_dz_max_slider );
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_cv_power_slider );
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_cv_expo_slider );
+}
+
+void Joy_MenuDraw (void)
+{
+	Menu_AdjustCursor( &s_joy_menu, 1 );
+	Menu_Draw( &s_joy_menu );
+
+	M_DrawGraph (s_joy_menu.x + 120, s_joy_menu.y + 8, 103, 100, -1.0f, 1.0f, 256, IN_JoyGetCurve());
+}
+
+const char *Joy_MenuKey( int key )
+{
+	return Default_MenuKey( &s_joy_menu, key );
+}
+
+void M_Menu_Joy_f (void)
+{
+	Joy_MenuInit();
+	M_PushMenu ( Joy_MenuDraw, Joy_MenuKey );
+}
+#endif // __psp__
+
+/*
+=======================================================================
+
 CONTROLS MENU
 
 =======================================================================
@@ -1152,6 +1489,9 @@ extern cvar_t *in_joystick;
 
 static menuframework_s	s_options_menu;
 static menuaction_s		s_options_defaults_action;
+#ifdef __psp__
+static menuaction_s		s_options_joystick_setup_action;
+#endif
 static menuaction_s		s_options_customize_options_action;
 static menuslider_s		s_options_sensitivity_slider;
 static menulist_s		s_options_freelook_box;
@@ -1180,6 +1520,13 @@ static void JoystickFunc( void *unused )
 {
 	Cvar_SetValue( "in_joystick", s_options_joystick_box.curvalue );
 }
+
+#ifdef __psp__
+static void JoysticSetupFunc( void *unused )
+{
+	M_Menu_Joy_f();
+}
+#endif
 
 static void CustomizeControlsFunc( void *unused )
 {
@@ -1531,6 +1878,16 @@ void Options_MenuInit( void )
 
 	position_y += 20;
 
+#ifdef __psp__
+	s_options_joystick_setup_action.generic.type		= MTYPE_ACTION;
+	s_options_joystick_setup_action.generic.x			= 0;
+	s_options_joystick_setup_action.generic.y			= position_y;
+	s_options_joystick_setup_action.generic.name		= "joystick setup";
+	s_options_joystick_setup_action.generic.callback	= JoysticSetupFunc;
+
+	position_y += 10;
+#endif
+
 	s_options_customize_options_action.generic.type	= MTYPE_ACTION;
 	s_options_customize_options_action.generic.x		= 0;
 	s_options_customize_options_action.generic.y		= position_y;
@@ -1570,6 +1927,9 @@ void Options_MenuInit( void )
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_freelook_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_crosshair_box );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_box );
+#ifdef __psp__
+	Menu_AddItem( &s_options_menu, ( void * ) &s_options_joystick_setup_action );
+#endif
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_customize_options_action );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_defaults_action );
 	Menu_AddItem( &s_options_menu, ( void * ) &s_options_console_action );
@@ -4149,6 +4509,7 @@ void M_Init (void)
 	Cmd_AddCommand ("menu_multiplayer", M_Menu_Multiplayer_f );
 	Cmd_AddCommand ("menu_video", M_Menu_Video_f);
 	Cmd_AddCommand ("menu_options", M_Menu_Options_f);
+		Cmd_AddCommand ("menu_joy", M_Menu_Joy_f);
 		Cmd_AddCommand ("menu_keys", M_Menu_Keys_f);
 	Cmd_AddCommand ("menu_quit", M_Menu_Quit_f);
 }

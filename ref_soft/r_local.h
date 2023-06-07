@@ -783,6 +783,7 @@ void    Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *d
 void    Draw_Char (int x, int y, int c);
 void    Draw_TileClear (int x, int y, int w, int h, char *name);
 void    Draw_Fill (int x, int y, int w, int h, int c);
+void	Draw_Line (int x0, int y0, int x1, int y1, int c);
 void    Draw_FadeScreen (void);
 
 void    Draw_GetPalette (void);

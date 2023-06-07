@@ -279,6 +279,40 @@ void Draw_Fill (int x, int y, int w, int h, int c)
 	qglEnable (GL_TEXTURE_2D);
 }
 
+
+/*
+=============
+Draw_Line
+=============
+*/
+void Draw_Line (int x0, int y0, int x1, int y1, int c)
+{
+	union
+	{
+		unsigned	c;
+		byte		v[4];
+	} color;
+
+	if ( (unsigned)c > 255)
+		ri.Sys_Error (ERR_FATAL, "Draw_Line: bad color");
+
+	qglDisable (GL_TEXTURE_2D);
+
+	color.c = d_8to24table[c];
+	qglColor3f (color.v[0]/255.0,
+		color.v[1]/255.0,
+		color.v[2]/255.0);
+
+	qglBegin (GL_LINES);
+
+	qglVertex2f (x0, y0);
+	qglVertex2f (x1, y1);
+
+	qglEnd ();
+	qglColor3f (1,1,1);
+	qglEnable (GL_TEXTURE_2D);
+}
+
 //=============================================================================
 
 /*
