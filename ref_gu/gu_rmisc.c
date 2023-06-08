@@ -144,10 +144,12 @@ void GL_ScreenShot_f (void)
 	buffer[15] = vid.height>>8;
 	buffer[16] = 24;	// pixel size
 
-	src = (byte*)gu_render.buffer.disp_ptr;
-	dst = buffer+18;
+	// vertical flip
+	src = (byte*)gu_render.buffer.disp_ptr + (gu_render.buffer.width * gu_render.screen.height * 2);
+	dst = buffer + 18;
 	for(i = 0; i < vid.height; i++)
 	{
+		src -= gu_render.buffer.width * 2;
 		/***/
 		for(j = 0; j < vid.width; j++)
 		{
@@ -159,7 +161,6 @@ void GL_ScreenShot_f (void)
 		}
 		/***/
 		dst += vid.width * 3;
-		src += gu_render.buffer.width * 2;
 	}
 
 	ri.FS_WriteFile(checkname, buffer, size, FS_PATH_GAMEDIR);
