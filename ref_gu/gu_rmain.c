@@ -78,23 +78,10 @@ cvar_t	*r_lefthand;
 
 cvar_t	*r_lightlevel;	// FIXME: This is a HACK to get the client's light level
 
-cvar_t	*gl_nosubimage;
-cvar_t	*gl_allow_software;
-
-cvar_t	*gl_vertex_arrays;
-
 cvar_t	*gl_particle_scale;
-
-cvar_t	*gl_ext_swapinterval;
-cvar_t	*gl_ext_palettedtexture;
-cvar_t	*gl_ext_multitexture;
-cvar_t	*gl_ext_pointparameters;
-cvar_t	*gl_ext_compiled_vertex_array;
+cvar_t	*gl_particle_point;
 
 cvar_t	*gl_log;
-cvar_t	*gl_bitdepth;
-cvar_t	*gl_drawbuffer;
-cvar_t  *gl_driver;
 cvar_t	*gl_lightmap;
 cvar_t	*gl_shadows;
 cvar_t	*gl_mode;
@@ -105,22 +92,14 @@ cvar_t	*gl_nobind;
 cvar_t	*gl_round_down;
 cvar_t	*gl_picmip;
 cvar_t	*gl_skymip;
+cvar_t	*gl_skytga;
 cvar_t	*gl_showtris;
-cvar_t	*gl_ztrick;
-cvar_t	*gl_finish;
 cvar_t	*gl_clear;
 cvar_t	*gl_cull;
 cvar_t	*gl_polyblend;
 cvar_t	*gl_flashblend;
-cvar_t	*gl_playermip;
 cvar_t  *gl_saturatelighting;
-cvar_t	*gl_swapinterval;
-cvar_t	*gl_texturemode;
-cvar_t	*gl_texturealphamode;
-cvar_t	*gl_texturesolidmode;
 cvar_t	*gl_lockpvs;
-
-cvar_t	*gl_3dlabs_broken;
 
 cvar_t	*vid_fullscreen;
 cvar_t	*vid_gamma;
@@ -524,7 +503,7 @@ R_DrawParticles
 */
 void R_DrawParticles (void)
 {
-	if ( gl_ext_pointparameters->value )
+	if ( gl_particle_point->value )
 	{
 		int		i;
 		//uint	color;
@@ -1024,14 +1003,11 @@ void R_Register( void )
 
 	r_lightlevel = ri.Cvar_Get ("r_lightlevel", "0", 0);
 
-	gl_nosubimage = ri.Cvar_Get( "gl_nosubimage", "0", 0 );
-	gl_allow_software = ri.Cvar_Get( "gl_allow_software", "0", 0 );
-
 	gl_particle_scale = ri.Cvar_Get( "gl_particle_scale", "0.5", CVAR_ARCHIVE );
+	gl_particle_point = ri.Cvar_Get( "gl_particle_point", "1", CVAR_ARCHIVE );
 
 	gl_modulate = ri.Cvar_Get ("gl_modulate", "1", CVAR_ARCHIVE );
 	gl_log = ri.Cvar_Get( "gl_log", "0", 0 );
-	gl_bitdepth = ri.Cvar_Get( "gl_bitdepth", "0", 0 );
 	gl_mode = ri.Cvar_Get( "gl_mode", "3", CVAR_ARCHIVE );
 	gl_lightmap = ri.Cvar_Get ("gl_lightmap", "0", 0);
 	gl_shadows = ri.Cvar_Get ("gl_shadows", "0", CVAR_ARCHIVE );
@@ -1040,35 +1016,15 @@ void R_Register( void )
 	gl_round_down = ri.Cvar_Get ("gl_round_down", "1", 0);
 	gl_picmip = ri.Cvar_Get ("gl_picmip", "0", 0);
 	gl_skymip = ri.Cvar_Get ("gl_skymip", "0", 0);
+	gl_skytga = ri.Cvar_Get ("gl_skytga", "0", 0);
 	gl_showtris = ri.Cvar_Get ("gl_showtris", "0", 0);
-	gl_ztrick = ri.Cvar_Get ("gl_ztrick", "0", 0);
-	gl_finish = ri.Cvar_Get ("gl_finish", "0", CVAR_ARCHIVE);
 	gl_clear = ri.Cvar_Get ("gl_clear", "0", 0);
 	gl_cull = ri.Cvar_Get ("gl_cull", "1", 0);
 	gl_polyblend = ri.Cvar_Get ("gl_polyblend", "1", 0);
 	gl_flashblend = ri.Cvar_Get ("gl_flashblend", "1", 0);
-	gl_playermip = ri.Cvar_Get ("gl_playermip", "0", 0);
 	gl_monolightmap = ri.Cvar_Get( "gl_monolightmap", "0", 0 );
-	gl_driver = ri.Cvar_Get( "gl_driver", "opengl32", CVAR_ARCHIVE );
-	gl_texturemode = ri.Cvar_Get( "gl_texturemode", "GL_LINEAR_MIPMAP_NEAREST", CVAR_ARCHIVE );
-	gl_texturealphamode = ri.Cvar_Get( "gl_texturealphamode", "default", CVAR_ARCHIVE );
-	gl_texturesolidmode = ri.Cvar_Get( "gl_texturesolidmode", "default", CVAR_ARCHIVE );
 	gl_lockpvs = ri.Cvar_Get( "gl_lockpvs", "0", 0 );
-
-	gl_vertex_arrays = ri.Cvar_Get( "gl_vertex_arrays", "0", CVAR_ARCHIVE );
-
-	gl_ext_swapinterval = ri.Cvar_Get( "gl_ext_swapinterval", "1", CVAR_ARCHIVE );
-	gl_ext_palettedtexture = ri.Cvar_Get( "gl_ext_palettedtexture", "1", CVAR_ARCHIVE );
-	gl_ext_multitexture = ri.Cvar_Get( "gl_ext_multitexture", "1", CVAR_ARCHIVE );
-	gl_ext_pointparameters = ri.Cvar_Get( "gl_ext_pointparameters", "1", CVAR_ARCHIVE );
-	gl_ext_compiled_vertex_array = ri.Cvar_Get( "gl_ext_compiled_vertex_array", "1", CVAR_ARCHIVE );
-
-	gl_drawbuffer = ri.Cvar_Get( "gl_drawbuffer", "GL_BACK", 0 );
-	gl_swapinterval = ri.Cvar_Get( "gl_swapinterval", "1", CVAR_ARCHIVE );
-
 	gl_saturatelighting = ri.Cvar_Get( "gl_saturatelighting", "0", 0 );
-
-	gl_3dlabs_broken = ri.Cvar_Get( "gl_3dlabs_broken", "1", CVAR_ARCHIVE );
 
 	vid_fullscreen = ri.Cvar_Get( "vid_fullscreen", "0", CVAR_ARCHIVE );
 	vid_gamma = ri.Cvar_Get( "vid_gamma", "1.0", CVAR_ARCHIVE );
@@ -1261,11 +1217,6 @@ void R_BeginFrame( float camera_separation )
 	** go into 2D mode
 	*/
 	R_SetGL2D ();
-
-	/*
-	** swapinterval stuff
-	*/
-	GL_UpdateSwapInterval();
 
 	//
 	// clear screen if desired

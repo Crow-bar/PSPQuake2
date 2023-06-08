@@ -155,7 +155,6 @@ void GL_BeginRendering (int *x, int *y, int *width, int *height);
 void GL_EndRendering (void);
 
 void GL_SetDefaultState( void );
-void GL_UpdateSwapInterval( void );
 
 extern int	gldepthmin, gldepthmax;
 
@@ -177,8 +176,6 @@ extern	int			r_framecount;
 extern	cplane_t	frustum[4];
 extern	int			c_brush_polys, c_alias_polys;
 
-
-extern	int			gl_filter_min, gl_filter_max;
 
 //
 // view origin
@@ -206,62 +203,33 @@ extern	cvar_t	*r_lerpmodels;
 
 extern	cvar_t	*r_lightlevel;	// FIXME: This is a HACK to get the client's light level
 
-extern cvar_t	*gl_vertex_arrays;
+extern	cvar_t	*gl_particle_point;
+extern	cvar_t	*gl_particle_scale;
 
-extern cvar_t	*gl_ext_swapinterval;
-extern cvar_t	*gl_ext_palettedtexture;
-extern cvar_t	*gl_ext_multitexture;
-extern cvar_t	*gl_ext_pointparameters;
-extern cvar_t	*gl_ext_compiled_vertex_array;
-
-
-extern cvar_t	*gl_particle_scale;
-
-
-extern	cvar_t	*gl_nosubimage;
-extern	cvar_t	*gl_bitdepth;
-extern	cvar_t	*gl_mode;
 extern	cvar_t	*gl_log;
 extern	cvar_t	*gl_lightmap;
 extern	cvar_t	*gl_shadows;
+extern	cvar_t	*gl_mode;
 extern	cvar_t	*gl_dynamic;
 extern  cvar_t  *gl_monolightmap;
+extern	cvar_t	*gl_modulate;
 extern	cvar_t	*gl_nobind;
 extern	cvar_t	*gl_round_down;
 extern	cvar_t	*gl_picmip;
 extern	cvar_t	*gl_skymip;
+extern	cvar_t	*gl_skytga;
 extern	cvar_t	*gl_showtris;
-extern	cvar_t	*gl_finish;
-extern	cvar_t	*gl_ztrick;
 extern	cvar_t	*gl_clear;
 extern	cvar_t	*gl_cull;
-extern	cvar_t	*gl_poly;
-extern	cvar_t	*gl_texsort;
 extern	cvar_t	*gl_polyblend;
 extern	cvar_t	*gl_flashblend;
-extern	cvar_t	*gl_lightmaptype;
-extern	cvar_t	*gl_modulate;
-extern	cvar_t	*gl_playermip;
-extern	cvar_t	*gl_drawbuffer;
-extern	cvar_t	*gl_3dlabs_broken;
-extern  cvar_t  *gl_driver;
-extern	cvar_t	*gl_swapinterval;
-extern	cvar_t	*gl_texturemode;
-extern	cvar_t	*gl_texturealphamode;
-extern	cvar_t	*gl_texturesolidmode;
 extern  cvar_t  *gl_saturatelighting;
 extern  cvar_t  *gl_lockpvs;
 
 extern	cvar_t	*vid_fullscreen;
 extern	cvar_t	*vid_gamma;
 
-extern	cvar_t		*intensity;
-
-extern	int		gl_lightmap_format;
-extern	int		gl_solid_format;
-extern	int		gl_alpha_format;
-extern	int		gl_tex_solid_format;
-extern	int		gl_tex_alpha_format;
+extern	cvar_t	*intensity;
 
 extern	int		c_visible_lightmaps;
 extern	int		c_visible_textures;
@@ -270,10 +238,7 @@ extern	ScePspFMatrix4	r_world_matrix;
 
 void R_TranslatePlayerSkin (int playernum);
 void GL_Bind (int texnum);
-//void GL_MBind( GLenum target, int texnum );
 void GL_TexEnv (int mode);
-//void GL_EnableMultitexture( qboolean enable );
-//void GL_SelectTexture( GLenum );
 
 void R_LightPoint (vec3_t p, vec3_t color);
 void R_PushDlights (void);

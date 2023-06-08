@@ -702,10 +702,10 @@ void R_SetSky (char *name, float rotate, vec3_t axis)
 		if (gl_skymip->value || skybox.rotate)
 			gl_picmip->value++;
 
-		if (gl_ext_palettedtexture->value)
-			Com_sprintf (pathname, sizeof(pathname), "env/%s%s.pcx", skybox.name, suf[i]);
-		else
+		if (gl_skytga->value)
 			Com_sprintf (pathname, sizeof(pathname), "env/%s%s.tga", skybox.name, suf[i]);
+		else
+			Com_sprintf (pathname, sizeof(pathname), "env/%s%s.pcx", skybox.name, suf[i]);
 
 		skybox.images[i] = GL_FindImage (pathname, IMG_TYPE_SKY);
 		if (!skybox.images[i])
