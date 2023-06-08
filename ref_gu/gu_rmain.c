@@ -208,7 +208,7 @@ void R_DrawSpriteModel (entity_t *e)
 
 	sceGuColor (GU_HCOLOR_4F(1, 1, 1, alpha));
 
-    GL_Bind (currentmodel->skins[e->frame]->texnum);
+    GL_Bind (currentmodel->skins[e->frame]);
 
 	GL_TexEnv (GU_TFX_MODULATE);
 
@@ -415,7 +415,7 @@ void GL_DrawParticles( int num_particles, const particle_t particles[], const un
 	float			scale;
 	//uint			color;
 
-    GL_Bind (r_particletexture->texnum);
+    GL_Bind (r_particletexture);
 	sceGuDepthMask (GU_TRUE);		// no z buffering
 	sceGuEnable (GU_BLEND);
 	GL_TexEnv (GU_TFX_MODULATE);
@@ -1106,7 +1106,7 @@ qboolean R_Init( void *hinstance, void *hWnd )
 
 	memset(&gl_state, 0, sizeof(gl_state));
 
-	gl_state.currenttexture = -1;
+	gl_state.currenttexture = NULL;
 	gl_state.currenttexenv = -1;
 
 	ri.Con_Printf (PRINT_ALL, "ref_gu version: "REF_VERSION"\n");

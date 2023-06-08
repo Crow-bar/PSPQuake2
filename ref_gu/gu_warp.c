@@ -609,7 +609,7 @@ void R_DrawSkyBox (void)
 		if (skybox.mins[0][i] >= skybox.maxs[0][i] || skybox.mins[1][i] >= skybox.maxs[1][i])
 			continue;
 
-		GL_Bind (skybox.images[skytexorder[i]]->texnum);
+		GL_Bind (skybox.images[skytexorder[i]]);
 
 		gu_vert_ftv_t* const uv = (gu_vert_ftv_t*)sceGuGetMemory (sizeof(gu_vert_ftv_t) * 4);
 		MakeSkyVec (skybox.mins[0][i], skybox.mins[1][i], i, &uv[0]);

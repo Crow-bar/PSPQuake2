@@ -30,7 +30,6 @@ image_t		gltextures[MAX_GLTEXTURES];
 image_t		*gltextures_hash[MAX_GLTEXTURES_HASH];
 #endif
 int			numgltextures;
-int			base_textureid;		// gltextures[i] = base_textureid+i
 
 cvar_t		*intensity;
 
@@ -67,17 +66,13 @@ void GL_TexEnv (int mode)
 GL_Bind
 ===============
 */
-void GL_Bind (int texnum)
+void GL_Bind (image_t *image)
 {
-	extern	image_t	*draw_chars;
-	image_t	*image;
+	if (!image || gl_nobind->value)
+		image = r_notexture;
 
-	if (gl_nobind->value && draw_chars)		// performance evaluation option
-		texnum = draw_chars->texnum;
-	if (gl_state.currenttexture == texnum)
+	if (gl_state.currenttexture == image)
 		return;
-
-	image = &gltextures[texnum];
 
 	// Set texture parameters
 	sceGuTexMode (image->format, 0, 0, (image->flags & IMG_FLAG_SWIZZLED) ? GU_TRUE : GU_FALSE);
@@ -91,7 +86,7 @@ void GL_Bind (int texnum)
 	// Set base texture
 	sceGuTexImage (0, image->uplwidth, image->uplheight, image->uplwidth, image->data);
 
-	gl_state.currenttexture = texnum;
+	gl_state.currenttexture = image;
 }
 
 /*
@@ -117,7 +112,7 @@ void	GL_ImageList_f (void)
 	for (i=0, image=gltextures ; i<numgltextures ; i++, image++)
 #endif
 	{
-		if (image->texnum < 0)
+		if (!image->name[0])
 			continue;
 
 		if(!image->flags & IMG_FLAG_EXTERNAL)
@@ -1328,7 +1323,6 @@ image_t *GL_LoadPic (char *name, byte *pic, int width, int height, int flags)
 
 	strcpy (image->name, name);
 	image->flags = flags;
-	image->texnum = index;
 
 #ifdef USE_HASH_FOR_TEXTURES
 	// add to hash

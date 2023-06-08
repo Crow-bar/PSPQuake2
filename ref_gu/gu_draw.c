@@ -67,7 +67,7 @@ void Draw_Char (int x, int y, int num)
 	hrow = row * size;
 	hcol = col * size;
 
-	GL_Bind (draw_chars->texnum);
+	GL_Bind (draw_chars);
 
 	gu_vert_htv_t* const out = (gu_vert_htv_t*)sceGuGetMemory (sizeof(gu_vert_htv_t ) * 2);
 	out[0].u = hcol;
@@ -142,7 +142,7 @@ void Draw_StretchPic (int x, int y, int w, int h, char *pic)
 	//if (!(image->flags & IMG_FLAG_HAS_ALPHA))
 	//	sceGuDisable (GU_ALPHA_TEST);
 
-	GL_Bind (image->texnum);
+	GL_Bind (image);
 
 	gu_vert_htv_t* const out = (gu_vert_htv_t*)sceGuGetMemory (sizeof(gu_vert_htv_t ) * 2);
 	out[0].u = image->sl;
@@ -181,7 +181,7 @@ void Draw_Pic (int x, int y, char *pic)
 	//if (!(image->flags & IMG_FLAG_HAS_ALPHA))
 	//	sceGuDisable (GU_ALPHA_TEST);
 
-	GL_Bind (image->texnum);
+	GL_Bind (image);
 
 	gu_vert_htv_t* const out = (gu_vert_htv_t*)sceGuGetMemory (sizeof(gu_vert_htv_t ) * 2);
 	out[0].u = image->sl;
@@ -222,7 +222,7 @@ void Draw_TileClear (int x, int y, int w, int h, char *pic)
 	//if (!(image->flags & IMG_FLAG_HAS_ALPHA))
 	//	sceGuDisable (GU_ALPHA_TEST);
 
-	GL_Bind (image->texnum);
+	GL_Bind (image);
 
 	gu_vert_htv_t* const out = (gu_vert_htv_t*)sceGuGetMemory (sizeof(gu_vert_htv_t ) * 2);
 	out[0].u = x;
@@ -346,7 +346,7 @@ void Draw_StretchRaw (int x, int y, int w, int h, int cols, int rows, byte *data
 	sceGuTexFilter (GU_LINEAR, GU_LINEAR);
 	sceGuTexImage (0, 256, 256, 256, image8);
 
-	gl_state.currenttexture = -1;
+	gl_state.currenttexture = NULL;
 
 	gu_vert_htv_t* const out = (gu_vert_htv_t*)sceGuGetMemory (sizeof(gu_vert_htv_t ) * 2);
 	out[0].u = 0;

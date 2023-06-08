@@ -314,7 +314,7 @@ void R_BlendLightmaps (void)
 		{
 			if (currentmodel == r_worldmodel)
 				c_visible_lightmaps++;
-			GL_Bind( gl_state.lightmap_textures[i]->texnum);
+			GL_Bind( gl_state.lightmap_textures[i]);
 
 			for ( surf = gl_lms.lightmap_surfaces[i]; surf != 0; surf = surf->lightmapchain )
 			{
@@ -333,7 +333,7 @@ void R_BlendLightmaps (void)
 	{
 		LM_InitBlock();
 
-		GL_Bind( gl_state.lightmap_textures[0]->texnum );
+		GL_Bind( gl_state.lightmap_textures[0] );
 
 		if (currentmodel == r_worldmodel)
 			c_visible_lightmaps++;
@@ -425,7 +425,7 @@ void R_RenderBrushPoly (msurface_t *fa)
 	c_brush_polys++;
 
 	image = R_TextureAnimation (fa->texinfo);
-	GL_Bind( image->texnum );
+	GL_Bind( image );
 
 	if (fa->flags & SURF_DRAWTURB)
 	{
@@ -516,7 +516,7 @@ void R_DrawAlphaSurfaces (void)
 
 	for (s=r_alpha_surfaces ; s ; s=s->texturechain)
 	{
-		GL_Bind(s->texinfo->image->texnum);
+		GL_Bind(s->texinfo->image);
 		c_brush_polys++;
 		if (s->texinfo->flags & SURF_TRANS33)
 			sceGuColor (GU_HCOLOR_4F(intens, intens, intens, 0.33));
@@ -659,7 +659,7 @@ void R_DrawBrushModel (entity_t *e)
 		return;
 
 	currententity = e;
-	gl_state.currenttexture = -1;
+	gl_state.currenttexture = NULL;
 
 	if (e->angles[0] || e->angles[1] || e->angles[2])
 	{
@@ -866,7 +866,7 @@ void R_DrawWorld (void)
 	ent.frame = (int)(r_newrefdef.time*2);
 	currententity = &ent;
 
-	gl_state.currenttexture = -1;
+	gl_state.currenttexture = NULL;
 
 	sceGuColor (GU_HCOLOR_DEFAULT);
 

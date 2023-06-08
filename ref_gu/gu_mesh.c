@@ -806,9 +806,8 @@ void R_DrawAliasModel (entity_t *e)
 				skin = currentmodel->skins[0];
 		}
 	}
-	if (!skin)
-		skin = r_notexture;	// fallback...
-	GL_Bind(skin->texnum);
+
+	GL_Bind (skin);
 
 	// draw it
 	sceGuShadeModel (GU_SMOOTH);

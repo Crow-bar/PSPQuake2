@@ -121,7 +121,7 @@ typedef struct image_s
 	uint		flags;
 
 	struct msurface_s	*texturechain;	// for sort-by-texture world drawing
-	int			texnum;					// gl texture binding
+	//int			texnum;					// gl texture binding
 	short		sl, tl, sh, th;			// unless part of the scrap
 
 	size_t		size;
@@ -237,7 +237,7 @@ extern	int		c_visible_textures;
 extern	ScePspFMatrix4	r_world_matrix;
 
 void R_TranslatePlayerSkin (int playernum);
-void GL_Bind (int texnum);
+void GL_Bind (image_t *image);
 void GL_TexEnv (int mode);
 
 void R_LightPoint (vec3_t p, vec3_t color);
@@ -381,14 +381,14 @@ typedef struct
 	float inverse_intensity;
 	qboolean fullscreen;
 
-	int     prev_mode;
+	int	prev_mode;
 
 	unsigned char *d_16to8table;
 
 	image_t	*lightmap_textures[MAX_LIGHTMAPS];
 
-	int	currenttexture;
-	int	currenttexenv;
+	image_t	*currenttexture;
+	int		currenttexenv;
 
 	float camera_separation;
 	qboolean stereo_enabled;
