@@ -1,0 +1,166 @@
+/*
+Copyright (C) 1997-2001 Id Software, Inc.
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+*/
+
+#include "../client/client.h"
+#include "../client/qmenu.h"
+
+extern cvar_t *vid_gamma;
+extern cvar_t *scr_viewsize;
+extern cvar_t *scr_drawfps;
+
+/*
+====================================================================
+
+MENU INTERACTION
+
+====================================================================
+*/
+static menuframework_s s_video_menu;
+
+static menuslider_s s_screensize_slider;
+static menuslider_s s_brightness_slider;
+static menulist_s   s_drawfps_list;
+static menulist_s   s_stipple_list;
+
+static void ScreenSizeCallback (void *s)
+{
+	menuslider_s *slider = (menuslider_s *)s;
+
+	Cvar_SetValue ("viewsize", s_screensize_slider.curvalue * 10);
+}
+
+static void BrightnessCallback (void *s)
+{
+	float gamma = (0.8 - (s_brightness_slider.curvalue / 10.0 - 0.5)) + 0.5;
+
+	Cvar_SetValue ("vid_gamma", gamma);
+}
+
+static void DrawFpsCallback (void *unused)
+{
+	Cvar_SetValue ("scr_drawfps", s_drawfps_list.curvalue);
+}
+
+static void StippleAlphaCallback (void *unused)
+{
+	Cvar_SetValue ("sw_stipplealpha", s_stipple_list.curvalue);
+}
+
+/*
+** VID_MenuInit
+*/
+void VID_MenuInit (void)
+{
+	static const char *yesno_names[] = {"no", "yes", 0};
+
+	if (!scr_viewsize)
+		scr_viewsize = Cvar_Get ("viewsize", "100", CVAR_ARCHIVE);
+
+	if (!vid_gamma)
+		vid_gamma = Cvar_Get ("vid_gamma", "1.0", CVAR_ARCHIVE);
+
+	if (!scr_drawfps)
+		scr_drawfps = Cvar_Get ("scr_drawfps", "0", CVAR_ARCHIVE);
+
+	s_video_menu.x      = viddef.width * 0.50;
+	s_video_menu.nitems = 0;
+
+	s_screensize_slider.generic.type     = MTYPE_SLIDER;
+	s_screensize_slider.generic.x        = 0;
+	s_screensize_slider.generic.y        = 20;
+	s_screensize_slider.generic.name     = "Screen size";
+	s_screensize_slider.generic.callback = ScreenSizeCallback;
+	s_screensize_slider.minvalue         = 3;
+	s_screensize_slider.maxvalue         = 12;
+	s_screensize_slider.curvalue         = scr_viewsize->value / 10;
+
+	s_brightness_slider.generic.type     = MTYPE_SLIDER;
+	s_brightness_slider.generic.x        = 0;
+	s_brightness_slider.generic.y        = 30;
+	s_brightness_slider.generic.name     = "Brightness";
+	s_brightness_slider.generic.callback = BrightnessCallback;
+	s_brightness_slider.minvalue         = 5;
+	s_brightness_slider.maxvalue         = 13;
+	s_brightness_slider.curvalue         = (1.3 - vid_gamma->value + 0.5) * 10;
+
+	/***/
+
+	s_drawfps_list.generic.type     = MTYPE_SPINCONTROL;
+	s_drawfps_list.generic.x        = 0;
+	s_drawfps_list.generic.y        = 50;
+	s_drawfps_list.generic.name     = "Draw FPS";
+	s_drawfps_list.generic.callback = DrawFpsCallback;
+	s_drawfps_list.itemnames        = yesno_names;
+	s_drawfps_list.curvalue         = scr_drawfps->value;
+
+	s_stipple_list.generic.type     = MTYPE_SPINCONTROL;
+	s_stipple_list.generic.x        = 0;
+	s_stipple_list.generic.y        = 60;
+	s_stipple_list.generic.name     = "Stipple alpha";
+	s_stipple_list.generic.callback = StippleAlphaCallback;
+	s_stipple_list.itemnames        = yesno_names;
+	s_stipple_list.curvalue         = Cvar_VariableValue ("sw_stipplealpha");
+
+	Menu_AddItem (&s_video_menu, (void *)&s_screensize_slider);
+	Menu_AddItem (&s_video_menu, (void *)&s_brightness_slider);
+	Menu_AddItem (&s_video_menu, (void *)&s_drawfps_list);
+	Menu_AddItem (&s_video_menu, (void *)&s_stipple_list);
+
+	Menu_Center (&s_video_menu);
+
+	s_video_menu.x -= 8;
+}
+
+/*
+================
+VID_MenuDraw
+================
+*/
+void VID_MenuDraw (void)
+{
+	int w, h;
+
+	/*
+	** draw the banner
+	*/
+	re.DrawGetPicSize (&w, &h, "m_banner_video");
+	re.DrawPic (viddef.width / 2 - w / 2, viddef.height / 2 - 110, "m_banner_video");
+
+	/*
+	** move cursor to a reasonable starting position
+	*/
+	Menu_AdjustCursor (&s_video_menu, 1);
+
+	/*
+	** draw the menu
+	*/
+	Menu_Draw (&s_video_menu);
+}
+
+/*
+================
+VID_MenuKey
+================
+*/
+const char *VID_MenuKey (int key)
+{
+	extern const char *Default_MenuKey (menuframework_s * m, int key);
+	return Default_MenuKey (&s_video_menu, key);
+}

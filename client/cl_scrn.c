@@ -449,7 +449,7 @@ void SCR_Init (void)
 	scr_graphscale = Cvar_Get ("graphscale", "1", 0);
 	scr_graphshift = Cvar_Get ("graphshift", "0", 0);
 	scr_drawall = Cvar_Get ("scr_drawall", "0", 0);
-	scr_drawfps = Cvar_Get ("scr_drawfps", "0", 0);
+	scr_drawfps = Cvar_Get ("scr_drawfps", "0", CVAR_ARCHIVE);
 
 //
 // register our commands

@@ -182,7 +182,7 @@ QUAKE2_OBJS = \
 	$(PSP_DIR)/sys_psp.o \
 	$(PSP_DIR)/in_psp.o \
 	$(PSP_DIR)/vid_psp.o \
-	$(PSP_DIR)/vid_menu.o \
+	$(PSP_DIR)/vid_menu_$(REF).o \
 	$(PSP_DIR)/net_psp.o \
 	$(PSP_DIR)/q_shpsp.o \
 	$(PSP_DIR)/glob.o \
