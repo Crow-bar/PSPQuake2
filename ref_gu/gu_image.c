@@ -115,7 +115,7 @@ void	GL_ImageList_f (void)
 		if (!image->name[0])
 			continue;
 
-		if(!image->flags & IMG_FLAG_EXTERNAL)
+		if(!(image->flags & IMG_FLAG_EXTERNAL))
 		{
 			if(image->flags & IMG_FLAG_INVRAM)
 				totalvr += image->size;
@@ -732,21 +732,21 @@ GL_ResampleTexture8
 */
 void GL_ResampleTexture8 (const byte *src, int inwidth, int inheight, byte *dst, int outwidth, int outheight)
 {
-	uint		fracstep;
-	const byte	*inrow;
-	uint		frac;
 	int			i, j;
+	const byte	*inrow;
+	unsigned	frac, fracstep;
 
 	if( !src )
 		return;
 
 	fracstep = inwidth * 0x10000 / outwidth;
 
-	for (i = 0; i < outheight ; ++i, dst += outwidth)
+	for (i = 0; i < outheight; i++, dst += outwidth)
 	{
 		inrow	= src + inwidth * (i * inheight / outheight);
 		frac	= fracstep >> 1;
-		for (j = 0; j < outwidth; ++j, frac += fracstep)
+
+		for (j = 0; j < outwidth; j++, frac += fracstep)
 		{
 			dst[j] = inrow[frac >> 16];
 		}
@@ -966,7 +966,6 @@ GL_SetTextureDimensions
 */
 static void GL_SetTextureDimensions (image_t *image, int width, int height)
 {
-	int		step = (int)gl_round_down->value;
 	int		scaled_width, scaled_height;
 
 	// store original sizes
@@ -977,13 +976,24 @@ static void GL_SetTextureDimensions (image_t *image, int width, int height)
 
 	for (scaled_height = 1; scaled_height < height; scaled_height <<= 1);
 
-	if(!IMG_IS_PIC(image))
+	if (!IMG_IS_PIC(image) && !IMG_IS_LM(image))
 	{
 		if (gl_round_down->value && scaled_width > width)
 			scaled_width >>= 1;
 
 		if (gl_round_down->value && scaled_height > height)
 			scaled_height >>= 1;
+
+		if (IMG_IS_SKY(image))
+		{
+			scaled_width >>= (int)gl_skymip->value;
+			scaled_height >>= (int)gl_skymip->value;
+		}
+		else
+		{
+			scaled_width >>= (int)gl_picmip->value;
+			scaled_height >>= (int)gl_picmip->value;
+		}
 	}
 
 	if (scaled_width > TEXTURE_SIZE_MAX || scaled_height > TEXTURE_SIZE_MAX)
@@ -996,7 +1006,7 @@ static void GL_SetTextureDimensions (image_t *image, int width, int height)
 	}
 
 	// set the texture dimensions
-	image->uplwidth  = Q_max (TEXTURE_SIZE_MIN, scaled_width);
+	image->uplwidth  = Q_max (16 / image->bpp, scaled_width); // must be a multiple of 16 bytes
 	image->uplheight = Q_max (TEXTURE_SIZE_MIN, scaled_height);
 }
 
@@ -1011,21 +1021,27 @@ static void GL_SetTextureFormat (image_t *image)
 	{
 	case IMG_FORMAT_IND_32: // default
 		image->format = GU_PSM_T8;
+		image->bpp = 1;
 		break;
 	case IMG_FORMAT_IND_24:
 		image->format = GU_PSM_T8;
+		image->bpp = 1;
 		break;
 	case IMG_FORMAT_RGBA_8888:
 		image->format = GU_PSM_8888;
+		image->bpp = 4;
 		break;
 	case IMG_FORMAT_RGBA_4444:
 		image->format = GU_PSM_4444;
+		image->bpp = 2;
 		break;
 	case IMG_FORMAT_RGBA_5551:
 		image->format = GU_PSM_5551;
+		image->bpp = 2;
 		break;
 	case IMG_FORMAT_RGB_5650:
 		image->format = GU_PSM_5650;
+		image->bpp = 2;
 		break;
 	}
 }
@@ -1035,10 +1051,9 @@ static void GL_SetTextureFormat (image_t *image)
 GL_CalcTextureSize
 ==================
 */
-static size_t GL_CalcTextureSize (int format, int width, int height, byte *outbpp)
+static size_t GL_CalcTextureSize (int format, int width, int height)
 {
 	size_t		size = 0;
-	byte		bpp = 0;
 
 	switch(format)
 	{
@@ -1049,27 +1064,22 @@ static size_t GL_CalcTextureSize (int format, int width, int height, byte *outbp
 	case GU_PSM_T8:
 	case GU_PSM_DXT3:
 	case GU_PSM_DXT5:
-		bpp = 1;
 		size = width * height;
 		break;
 	case GU_PSM_T16:
 	case GU_PSM_4444:
 	case GU_PSM_5551:
 	case GU_PSM_5650:
-		bpp = 2;
 		size = width * height * 2;
 		break;
 	case GU_PSM_T32:
 	case GU_PSM_8888:
-		bpp = 4;
 		size = width * height * 4;
 		break;
 	default:
 		ri.Sys_Error (ERR_DROP, "GL_CalcTextureSize: bad texture internal format (%u)\n", format);
 		break;
 	}
-
-	if(outbpp != NULL) *outbpp = bpp;
 
 	return size;
 }
@@ -1109,10 +1119,10 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 	int			i;
 	int			mark;
 
-	GL_SetTextureDimensions (image, width, height);
 	GL_SetTextureFormat (image);
+	GL_SetTextureDimensions (image, width, height);
 
-	image->size = GL_CalcTextureSize (image->format, image->uplwidth, image->uplheight, &image->bpp);
+	image->size = GL_CalcTextureSize (image->format, image->uplwidth, image->uplheight);
 
 	swizzle = false;
 
@@ -1121,7 +1131,7 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 
 	if (!(image->flags & IMG_FLAG_DYNAMIC))
 	{
-		swizzle = true;
+		swizzle = ((image->uplwidth * image->bpp) >= 16 && image->uplheight >= 8) ? true : false;
 
 		if (GL_TextureHasAplha (pic, width, height, image->bpp))
 			image->flags |=	IMG_FLAG_HAS_ALPHA;
@@ -1199,7 +1209,7 @@ void GL_UploadExternal (image_t *image, byte *pic, int width, int height)
 
 	image->width = image->uplwidth = width;
 	image->height = image->uplheight = height;
-	image->size = GL_CalcTextureSize (image->format, image->uplwidth, image->uplheight, &image->bpp);
+	image->size = GL_CalcTextureSize (image->format, image->uplwidth, image->uplheight);
 
 	if (!pic)
 		ri.Sys_Error (ERR_DROP, "GL_UploadExternal: %s without external buffer!\n", image->name);

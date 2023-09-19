@@ -682,6 +682,7 @@ void R_SetSky (char *name, float rotate, vec3_t axis)
 {
 	int		i;
 	char	pathname[MAX_QPATH];
+	float	skymip;
 
 	if (!name || !name[0])
 	{
@@ -696,12 +697,15 @@ void R_SetSky (char *name, float rotate, vec3_t axis)
 	skybox.rotate = rotate;
 	VectorCopy (axis, skybox.axis);
 
+	// save value
+	skymip = gl_skymip->value;
+
+	// chop down rotating skies for less memory
+	if (skybox.rotate && (gl_skymip->value == 0.0f))
+		gl_skymip->value = 1.0f;
+
 	for (i=0 ; i<6 ; i++)
 	{
-		// chop down rotating skies for less memory
-		if (gl_skymip->value || skybox.rotate)
-			gl_picmip->value++;
-
 		if (gl_skytga->value)
 			Com_sprintf (pathname, sizeof(pathname), "env/%s%s.tga", skybox.name, suf[i]);
 		else
@@ -710,17 +714,20 @@ void R_SetSky (char *name, float rotate, vec3_t axis)
 		skybox.images[i] = GL_FindImage (pathname, IMG_TYPE_SKY);
 		if (!skybox.images[i])
 			skybox.images[i] = r_notexture;
+	}
 
-		if (gl_skymip->value || skybox.rotate)
-		{	// take less memory
-			gl_picmip->value--;
-			skybox.min = 1.0/256;
-			skybox.max = 255.0/256;
-		}
-		else
-		{
-			skybox.min = 1.0/512;
-			skybox.max = 511.0/512;
-		}
+	// take less memory
+	if (gl_skymip->value)
+	{
+		// restore value
+		gl_skymip->value = skymip;
+
+		skybox.min = 1.0/256;
+		skybox.max = 255.0/256;
+	}
+	else
+	{
+		skybox.min = 1.0/512;
+		skybox.max = 511.0/512;
 	}
 }
