@@ -572,6 +572,7 @@ void M_AddToServerList (netadr_t adr, char *info);
 qboolean OSK_SetActive(qboolean active);
 qboolean OSK_IsActive(void);
 qboolean OSK_KeyEvent(int *key, qboolean down);
+void OSK_SetInputPosition(int x, int y);
 void OSK_Draw(void);
 
 //

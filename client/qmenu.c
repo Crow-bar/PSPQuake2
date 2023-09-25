@@ -146,7 +146,10 @@ qboolean Field_Key( menufield_s *f, int key )
 	if(!OSK_IsActive() && (key == K_ENTER || key == K_A_BUTTON))
 	{
 		if(OSK_SetActive(true))
+		{
+			OSK_SetInputPosition(f->generic.x + f->generic.parent->x, f->generic.y + f->generic.parent->y);
 			return false;
+		}
 	}
 
 	switch ( key )

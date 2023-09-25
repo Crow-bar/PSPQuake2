@@ -46,6 +46,8 @@ static const char *osk_layout[OSK_MAX_LINES][OSK_MAX_ROWS] =
 static struct
 {
 	qboolean    active;
+	int         pos_x;
+	int         pos_y;
 	int         cursor_lay;
 	int         cursor_x;
 	int         cursor_y;
@@ -64,7 +66,10 @@ qboolean OSK_SetActive(qboolean active)
 
 	osk_state.active = active;
 	if(active) // clear before interception
+	{
+		OSK_SetInputPosition(-1, -1); // default position
 		Key_ClearStates();
+	}
 
 	return true;
 }
@@ -160,6 +165,26 @@ qboolean OSK_KeyEvent(int *key, qboolean down)
 
 /*
 ================
+OSK_SetInputPosition
+================
+*/
+void OSK_SetInputPosition(int x, int y)
+{
+	osk_state.pos_x = (viddef.width - OSK_MAX_ROWS * 16) >> 1; // center 1/2
+	if(y == -1)
+	{
+		osk_state.pos_y = (viddef.height - OSK_MAX_LINES * 16) >> 3; // 1/8
+		return;
+	}
+
+	if (y > (viddef.height - 20 - OSK_MAX_LINES * 16))
+		osk_state.pos_y = y - 4 - OSK_MAX_LINES * 16; //  top
+	else
+		osk_state.pos_y = y + 20; // bottom
+}
+
+/*
+================
 OSK_DrawBox
 ================
 */
@@ -198,15 +223,12 @@ OSK_Draw
 void OSK_Draw(void)
 {
 	char    osk_key;
-	int     x, y, pos_x, pos_y;
+	int     x, y;
 
 	if(!osk_state.active)
 		return;
 
-	pos_x = (viddef.width - OSK_MAX_ROWS * 16) >> 1;
-	pos_y = (viddef.height - OSK_MAX_LINES * 16) >> 3;
-
-	OSK_DrawBox(pos_x - 8, pos_y - 8, OSK_MAX_ROWS * 2 - 1, OSK_MAX_LINES * 2 - 1);
+	OSK_DrawBox(osk_state.pos_x - 8, osk_state.pos_y - 8, OSK_MAX_ROWS * 2 - 1, OSK_MAX_LINES * 2 - 1);
 
 	for(y = 0; y < OSK_MAX_LINES; y++)
 	{
@@ -217,7 +239,7 @@ void OSK_Draw(void)
 			if(osk_state.cursor_x == x && osk_state.cursor_y == y)
 				osk_key = (osk_key == ' ') ? 0x8b : osk_key + 0x80;
 
-			re.DrawChar (x * 16 + pos_x, y * 16 + pos_y, osk_key);
+			re.DrawChar (x * 16 + osk_state.pos_x, y * 16 + osk_state.pos_y, osk_key);
 		}
 	}
 }
