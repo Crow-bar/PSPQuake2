@@ -21,22 +21,22 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // gu_render.c
 #include "gu_local.h"
 
-gurender_t	gu_render;
+gurender_t gu_render;
 
-cvar_t	*gl_bufferformat;
-cvar_t	*gl_vsync;
-cvar_t	*gl_netactive;
+cvar_t *gl_bufferformat;
+cvar_t *gl_vsync;
+cvar_t *gl_netactive;
 
 // Set frame buffer
-#define PSP_FB_WIDTH		480
-#define PSP_FB_HEIGHT		272
-#define PSP_FB_BWIDTH		512
+#define PSP_FB_WIDTH  480
+#define PSP_FB_HEIGHT 272
+#define PSP_FB_BWIDTH 512
 
-#define PSP_GU_LIST_SIZE	0x100000 // 1Mb
+#define PSP_GU_LIST_SIZE 0x100000 // 1Mb
 
-static byte context_list[PSP_GU_LIST_SIZE] __attribute__((aligned( 64 )));
+static byte context_list[PSP_GU_LIST_SIZE] __attribute__ ((aligned (64)));
 
-qboolean GU_InitGraphics( qboolean fullscreen );
+qboolean GU_InitGraphics (qboolean fullscreen);
 
 /*
 ===============
@@ -45,26 +45,26 @@ GU_SetMode
 */
 void GU_SetBufferFormat (int value, int *format, int *bpp)
 {
-	switch(value)
+	switch (value)
 	{
 	case 8888:
 		*format = GU_PSM_8888;
-		*bpp = 4;
+		*bpp    = 4;
 		break;
 	case 4444:
 		*format = GU_PSM_4444;
-		*bpp = 2;
+		*bpp    = 2;
 		break;
 	case 5551:
 		*format = GU_PSM_5551;
-		*bpp = 2;
+		*bpp    = 2;
 		break;
 	default:
-		ri.Con_Printf( PRINT_ALL, "invalid buffer format!\n" );
+		ri.Con_Printf (PRINT_ALL, "invalid buffer format!\n");
 	case 5650:
 	case 565:
 		*format = GU_PSM_5650;
-		*bpp = 2;
+		*bpp    = 2;
 		break;
 	}
 }
@@ -74,7 +74,7 @@ void GU_SetBufferFormat (int value, int *format, int *bpp)
 GU_SetMode
 ===============
 */
-int GU_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
+int GU_SetMode (int *pwidth, int *pheight, int mode, qboolean fullscreen)
 {
 	int width, height;
 
@@ -104,13 +104,13 @@ int GU_SetMode( int *pwidth, int *pheight, int mode, qboolean fullscreen )
 		return rserr_invalid_mode;
 	}
 #else
-	width = PSP_FB_WIDTH;
+	width  = PSP_FB_WIDTH;
 	height = PSP_FB_HEIGHT;
 
-	ri.Con_Printf( PRINT_ALL, "Initializing display\n");
-	ri.Con_Printf( PRINT_ALL, "...setting mode: %d %d\n", width, height);
+	ri.Con_Printf (PRINT_ALL, "Initializing display\n");
+	ri.Con_Printf (PRINT_ALL, "...setting mode: %d %d\n", width, height);
 
-	*pwidth = width;
+	*pwidth  = width;
 	*pheight = height;
 #endif
 
@@ -127,10 +127,10 @@ GU_Shutdown
 */
 void GU_Shutdown (void)
 {
-	fprintf(stderr, "GU_Shutdown\n");
+	fprintf (stderr, "GU_Shutdown\n");
 
 	// Finish rendering.
-	sceGuFinish ();
+	sceGuFinish();
 	sceGuSync (GU_SYNC_FINISH, GU_SYNC_WAIT);
 
 	// Shut down the display.
@@ -144,7 +144,7 @@ void GU_Shutdown (void)
 	if (gu_render.buffer.depth_ptr)
 		vfree (gu_render.buffer.depth_ptr);
 
-	memset (&gu_render, 0, sizeof(gu_render));
+	memset (&gu_render, 0, sizeof (gu_render));
 }
 
 /*
@@ -154,42 +154,44 @@ GU_Init
 */
 int GU_Init (void *hinstance, void *wndproc)
 {
-	size_t	buffersize;
-	memset (&gu_render, 0, sizeof(gu_render));
+	size_t buffersize;
+	memset (&gu_render, 0, sizeof (gu_render));
 
 	gl_bufferformat = ri.Cvar_Get ("gl_bufferformat", "5650", CVAR_ARCHIVE);
-	gl_vsync = ri.Cvar_Get ("gl_vsync", "0", CVAR_ARCHIVE);
-	gl_netactive = ri.Cvar_Get ("net_active", "0", 0);
+	gl_vsync        = ri.Cvar_Get ("gl_vsync", "0", CVAR_ARCHIVE);
+	gl_netactive    = ri.Cvar_Get ("net_active", "0", 0);
 
 	if (vinit() < 0)
 	{
-		Sys_Error("VRam unavailable!");
+		Sys_Error ("VRam unavailable!");
 		return false;
 	}
 
-	gu_render.screen.width = PSP_FB_WIDTH;
+	gu_render.screen.width  = PSP_FB_WIDTH;
 	gu_render.screen.height = PSP_FB_HEIGHT;
 
 	gu_render.buffer.width = PSP_FB_BWIDTH;
 
 	GU_SetBufferFormat ((int)gl_bufferformat->value, &gu_render.buffer.format, &gu_render.buffer.bpp);
 
-	gu_render.list.ptr = context_list;
-	gu_render.list.size = sizeof(context_list);
+	gu_render.list.ptr  = context_list;
+	gu_render.list.size = sizeof (context_list);
 
 	buffersize = gu_render.buffer.width * gu_render.screen.height * gu_render.buffer.bpp;
 
-	gu_render.buffer.draw_ptr = (void*)valloc (buffersize);
+	gu_render.buffer.draw_ptr = (void *)valloc (buffersize);
 	if (!gu_render.buffer.draw_ptr)
-		Sys_Error("Memory allocation failled! (draw buffer)\n");
+		Sys_Error ("Memory allocation failled! (draw buffer)\n");
 
-	gu_render.buffer.disp_ptr = (void*)valloc (buffersize);
+	gu_render.buffer.disp_ptr = (void *)valloc (buffersize);
 	if (!gu_render.buffer.disp_ptr)
-		Sys_Error("Memory allocation failled! (disp buffer)\n");
+		Sys_Error ("Memory allocation failled! (disp buffer)\n");
 
-	gu_render.buffer.depth_ptr = (void*)valloc (buffersize);
+	buffersize = gu_render.buffer.width * gu_render.screen.height * 2; // depth (u16) 0 - 65535
+
+	gu_render.buffer.depth_ptr = (void *)valloc (buffersize);
 	if (!gu_render.buffer.depth_ptr)
-		Sys_Error("Memory allocation failled! (depth buffer)\n");
+		Sys_Error ("Memory allocation failled! (depth buffer)\n");
 
 	// Initialise the GU.
 	sceGuInit();
@@ -197,13 +199,14 @@ int GU_Init (void *hinstance, void *wndproc)
 	// Set up the GU.
 	sceGuStart (GU_DIRECT, gu_render.list.ptr);
 
-	sceGuDrawBuffer ( gu_render.buffer.format, vrelptr (gu_render.buffer.draw_ptr), gu_render.buffer.width );
-	sceGuDispBuffer ( gu_render.screen.width, gu_render.screen.height, vrelptr (gu_render.buffer.disp_ptr), gu_render.buffer.width );
-	sceGuDepthBuffer ( vrelptr (gu_render.buffer.depth_ptr), gu_render.buffer.width );
+	sceGuDrawBuffer (gu_render.buffer.format, vrelptr (gu_render.buffer.draw_ptr), gu_render.buffer.width);
+	sceGuDispBuffer (
+		gu_render.screen.width, gu_render.screen.height, vrelptr (gu_render.buffer.disp_ptr), gu_render.buffer.width);
+	sceGuDepthBuffer (vrelptr (gu_render.buffer.depth_ptr), gu_render.buffer.width);
 
 	// Set the rendering offset and viewport.
 	sceGuOffset (2048 - (gu_render.screen.width / 2), 2048 - (gu_render.screen.height / 2));
-	sceGuViewport (2048, 2048, gu_render.screen.width, gu_render.screen.height );
+	sceGuViewport (2048, 2048, gu_render.screen.width, gu_render.screen.height);
 	sceGuDepthRange (0, 65535);
 
 	// Set up scissoring.
@@ -211,7 +214,7 @@ int GU_Init (void *hinstance, void *wndproc)
 	sceGuScissor (0, 0, gu_render.screen.width, gu_render.screen.height);
 
 	// Set up drawing functions
-	sceGuClearColor (GU_COLOR(1.0f, 0.5f, 0.5f, 1.0f));
+	sceGuClearColor (GU_COLOR (1.0f, 0.5f, 0.5f, 1.0f));
 	sceGuColor (GU_HCOLOR_DEFAULT);
 
 	sceGuEnable (GU_DEPTH_TEST);
@@ -237,21 +240,21 @@ int GU_Init (void *hinstance, void *wndproc)
 
 	// Set the default matrices.
 	sceGumMatrixMode (GU_PROJECTION);
-	sceGumLoadIdentity ();
+	sceGumLoadIdentity();
 	sceGumMatrixMode (GU_VIEW);
-	sceGumLoadIdentity ();
+	sceGumLoadIdentity();
 	sceGumMatrixMode (GU_MODEL);
-	sceGumLoadIdentity ();
+	sceGumLoadIdentity();
 	sceGumMatrixMode (GU_TEXTURE);
-	sceGumLoadIdentity ();
+	sceGumLoadIdentity();
 
-	sceGumUpdateMatrix ();
+	sceGumUpdateMatrix();
 
-	sceGuFinish ();
+	sceGuFinish();
 	sceGuSync (GU_SYNC_FINISH, GU_SYNC_WAIT);
 
 	// Turn on the display.
-	sceDisplayWaitVblankStart ();
+	sceDisplayWaitVblankStart();
 	sceGuDisplay (GU_TRUE);
 
 	// Start a new render.
@@ -267,7 +270,6 @@ GU_BeginFrame
 */
 void GU_BeginFrame (float camera_seperation)
 {
-
 }
 
 /*
@@ -281,17 +283,17 @@ as yet to be determined.
 void GU_EndFrame (void)
 {
 	// finish rendering.
-	sceGuFinish ();
+	sceGuFinish();
 	sceGuSync (GU_SYNC_FINISH, GU_SYNC_WAIT);
 
 	// vsync
 	if (gl_vsync->value || gl_netactive->value)
-		sceDisplayWaitVblankStart ();
+		sceDisplayWaitVblankStart();
 
 	// swap the buffers.
 	sceGuSwapBuffers();
 
-	void* p_swap = gu_render.buffer.disp_ptr;
+	void *p_swap              = gu_render.buffer.disp_ptr;
 	gu_render.buffer.disp_ptr = gu_render.buffer.draw_ptr;
 	gu_render.buffer.draw_ptr = p_swap;
 
@@ -329,7 +331,6 @@ GU_EnableLogging
 */
 void GU_EnableLogging (qboolean enable)
 {
-
 }
 
 /*
@@ -339,5 +340,4 @@ GU_LogNewFrame
 */
 void GU_LogNewFrame (void)
 {
-
 }
