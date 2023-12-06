@@ -383,6 +383,17 @@ void SV_InitGameProgs (void)
 	import.SetAreaPortalState = CM_SetAreaPortalState;
 	import.AreasConnected = CM_AreasConnected;
 
+	import.FileOpen = FS_FOpen;
+	import.FileLength = FS_FLength;
+	import.FileRead = FS_FRead;
+	import.FileWrite = FS_FWrite;
+	import.FilePrintf = FS_FPrintf;
+	import.FileSeek = FS_FSeek;
+	import.FileClose = FS_FClose;
+	import.GetWriteDir  = FS_GetWriteDir;
+
+	import.monster_flash_offset = monster_flash_offset;
+
 	ge = (game_export_t *)Sys_GetGameAPI (&import);
 
 	if (!ge)

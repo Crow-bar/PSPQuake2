@@ -1,0 +1,337 @@
+#############################################################################
+# SDK
+#############################################################################
+
+PSPSDK = $(shell psp-config --pspsdk-path)
+ifeq ($(PSPSDK),)
+$(error $$(PSPSDK) is undefined.)
+endif
+
+CC       = psp-gcc
+CXX      = psp-g++
+AS       = psp-gcc
+LD       = psp-gcc
+FIXUP    = psp-fixup-imports
+
+#############################################################################
+# SETUP
+#############################################################################
+
+BUILD := debug
+GAME := baseq2
+
+TARGET           = $(BUILDDIR)/gamepsp
+FINAL_TARGET     = $(TARGET).prx
+
+PSP_FW_VERSION   = 660
+PSP_BASE_ADDR    = 0x08804000
+
+#############################################################################
+# DIRS
+#############################################################################
+
+SRCDIR=..
+
+INSTALL_DIR       = dist
+
+COMMON_DIR        = $(BUILDDIR)/qcommon
+PSP_DIR           = $(BUILDDIR)/psp
+SHARED_DIR        = $(BUILDDIR)/shared
+GAME_DIR          = $(BUILDDIR)/game
+CTF_DIR           = $(BUILDDIR)/ctf
+XATRIX_DIR        = $(BUILDDIR)/xatrix
+
+#############################################################################
+# FLAGS
+#############################################################################
+
+BASE_CFLAGS = -MD -G0 -Dstricmp=strcasecmp
+
+release_CFLAGS = $(BASE_CFLAGS) -O3 \
+	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \
+	-falign-jumps=2 -falign-functions=2
+debug_CFLAGS= -g $(BASE_CFLAGS)
+
+#############################################################################
+# CHECKS
+#############################################################################
+
+VALID_BUILD = debug release
+VALID_GAMES = baseq2 ctf xatrix
+
+ifeq (,$(filter $(BUILD),$(VALID_BUILD)))
+$(error Invalid build mode - [$(BUILD)]! Supported - [$(VALID_BUILD)])
+endif
+
+ifeq (,$(filter $(GAME),$(VALID_GAMES)))
+$(error Invalid game - [$(GAME)]! Supported - [$(VALID_GAMES)])
+endif
+
+BUILDDIR = $(BUILD)/sharedlibs/$(GAME)
+CFLAGS = $($(BUILD)_CFLAGS)
+
+ifeq ($(BUILD), debug)
+EXTRA_TARGETS += $(TARGET).sym
+endif
+
+#############################################################################
+# GOALS
+#############################################################################
+
+all: $(EXTRA_TARGETS) $(FINAL_TARGET)
+
+install: all
+	@echo "Installing..."
+	@mkdir -pv $(INSTALL_DIR)/$(GAME)
+	@cp -fv $(TARGET).prx $(INSTALL_DIR)/$(GAME)
+	@echo "Done."
+
+clean-all: clean-debug clean-release
+
+clean-debug:
+	$(MAKE) -f Makeshgame clean BUILD=debug
+
+clean-release:
+	$(MAKE) -f Makeshgame clean BUILD=release
+
+clean:
+	-rm -f \
+	$(FINAL_TARGET) \
+	$(TARGET).elf \
+	\
+	$(OBJS) \
+	$(SHARED_OBJS) \
+	$(GAME_OBJS) \
+	$(CTF_OBJS) \
+	$(XATRIX_OBJS) \
+	\
+	$(OBJS:.o=.d) \
+	$(SHARED_OBJS:.o=.d) \
+	$(GAME_OBJS:.o=.d) \
+	$(CTF_OBJS:.o=.d) \
+	$(XATRIX_OBJS:.o=.d)
+
+#############################################################################
+# MAIN
+#############################################################################
+
+OBJS = \
+	$(BUILDDIR)/$(GAME).o \
+	$(PSP_DIR)/export/module.o \
+	$(PSP_DIR)/export/crt_shared.o \
+	$(PSP_DIR)/export/q_shared.o
+
+-include $(OBJS:.o=.d)
+#############################################################################
+# SHARED
+#############################################################################
+
+SHARED_OBJS = \
+	$(SHARED_DIR)/q_shared.o \
+	$(SHARED_DIR)/BOPS.o
+
+$(BUILDDIR)/shared.o: $(SHARED_OBJS)
+	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
+	@$(LD) -r -o $@ $(SHARED_OBJS)
+
+-include $(SHARED_OBJS:.o=.d)
+#############################################################################
+# GAME
+#############################################################################
+
+GAME_OBJS = \
+	$(GAME_DIR)/g_ai.o \
+	$(GAME_DIR)/g_chase.o \
+	$(GAME_DIR)/p_client.o \
+	$(GAME_DIR)/g_cmds.o \
+	$(GAME_DIR)/g_svcmds.o \
+	$(GAME_DIR)/g_combat.o \
+	$(GAME_DIR)/g_func.o \
+	$(GAME_DIR)/g_items.o \
+	$(GAME_DIR)/g_main.o \
+	$(GAME_DIR)/g_misc.o \
+	$(GAME_DIR)/g_monster.o \
+	$(GAME_DIR)/g_phys.o \
+	$(GAME_DIR)/g_save.o \
+	$(GAME_DIR)/g_spawn.o \
+	$(GAME_DIR)/g_target.o \
+	$(GAME_DIR)/g_trigger.o \
+	$(GAME_DIR)/g_turret.o \
+	$(GAME_DIR)/g_utils.o \
+	$(GAME_DIR)/g_weapon.o \
+	$(GAME_DIR)/m_actor.o \
+	$(GAME_DIR)/m_berserk.o \
+	$(GAME_DIR)/m_boss2.o \
+	$(GAME_DIR)/m_boss3.o \
+	$(GAME_DIR)/m_boss31.o \
+	$(GAME_DIR)/m_boss32.o \
+	$(GAME_DIR)/m_brain.o \
+	$(GAME_DIR)/m_chick.o \
+	$(GAME_DIR)/m_flipper.o \
+	$(GAME_DIR)/m_float.o \
+	$(GAME_DIR)/m_flyer.o \
+	$(GAME_DIR)/m_gladiator.o \
+	$(GAME_DIR)/m_gunner.o \
+	$(GAME_DIR)/m_hover.o \
+	$(GAME_DIR)/m_infantry.o \
+	$(GAME_DIR)/m_insane.o \
+	$(GAME_DIR)/m_medic.o \
+	$(GAME_DIR)/m_move.o \
+	$(GAME_DIR)/m_mutant.o \
+	$(GAME_DIR)/m_parasite.o \
+	$(GAME_DIR)/m_soldier.o \
+	$(GAME_DIR)/m_supertank.o \
+	$(GAME_DIR)/m_tank.o \
+	$(GAME_DIR)/p_hud.o \
+	$(GAME_DIR)/p_trail.o \
+	$(GAME_DIR)/p_view.o \
+	$(GAME_DIR)/p_weapon.o
+
+$(BUILDDIR)/baseq2.o: $(GAME_OBJS)
+	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
+	@$(LD) -r -o $@ $(GAME_OBJS)
+
+-include $(GAME_OBJS:.o=.d)
+#############################################################################
+# CTF
+#############################################################################
+
+CTF_OBJS = \
+	$(CTF_DIR)/g_ai.o \
+	$(CTF_DIR)/g_chase.o \
+	$(CTF_DIR)/g_cmds.o \
+	$(CTF_DIR)/g_combat.o \
+	$(CTF_DIR)/g_ctf.o \
+	$(CTF_DIR)/g_func.o \
+	$(CTF_DIR)/g_items.o \
+	$(CTF_DIR)/g_main.o \
+	$(CTF_DIR)/g_misc.o \
+	$(CTF_DIR)/g_monster.o \
+	$(CTF_DIR)/g_phys.o \
+	$(CTF_DIR)/g_save.o \
+	$(CTF_DIR)/g_spawn.o \
+	$(CTF_DIR)/g_svcmds.o \
+	$(CTF_DIR)/g_target.o \
+	$(CTF_DIR)/g_trigger.o \
+	$(CTF_DIR)/g_utils.o \
+	$(CTF_DIR)/g_weapon.o \
+	$(CTF_DIR)/m_move.o \
+	$(CTF_DIR)/p_client.o \
+	$(CTF_DIR)/p_hud.o \
+	$(CTF_DIR)/p_menu.o \
+	$(CTF_DIR)/p_trail.o \
+	$(CTF_DIR)/p_view.o \
+	$(CTF_DIR)/p_weapon.o
+
+$(BUILDDIR)/ctf.o: $(CTF_OBJS)
+	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
+	@$(LD) -r -o $@ $(CTF_OBJS)
+
+-include $(CTF_OBJS:.o=.d)
+#############################################################################
+# XATRIX
+#############################################################################
+
+XATRIX_OBJS = \
+	$(XATRIX_DIR)/g_ai.o \
+	$(XATRIX_DIR)/g_cmds.o \
+	$(XATRIX_DIR)/g_combat.o \
+	$(XATRIX_DIR)/g_func.o \
+	$(XATRIX_DIR)/g_items.o \
+	$(XATRIX_DIR)/g_main.o \
+	$(XATRIX_DIR)/g_misc.o \
+	$(XATRIX_DIR)/g_monster.o \
+	$(XATRIX_DIR)/g_phys.o \
+	$(XATRIX_DIR)/g_save.o \
+	$(XATRIX_DIR)/g_spawn.o \
+	$(XATRIX_DIR)/g_svcmds.o \
+	$(XATRIX_DIR)/g_target.o \
+	$(XATRIX_DIR)/g_trigger.o \
+	$(XATRIX_DIR)/g_turret.o \
+	$(XATRIX_DIR)/g_utils.o \
+	$(XATRIX_DIR)/g_weapon.o \
+	$(XATRIX_DIR)/m_actor.o \
+	$(XATRIX_DIR)/m_berserk.o \
+	$(XATRIX_DIR)/m_boss2.o \
+	$(XATRIX_DIR)/m_boss3.o \
+	$(XATRIX_DIR)/m_boss31.o \
+	$(XATRIX_DIR)/m_boss32.o \
+	$(XATRIX_DIR)/m_boss5.o \
+	$(XATRIX_DIR)/m_brain.o \
+	$(XATRIX_DIR)/m_chick.o \
+	$(XATRIX_DIR)/m_fixbot.o \
+	$(XATRIX_DIR)/m_flash.o \
+	$(XATRIX_DIR)/m_flipper.o \
+	$(XATRIX_DIR)/m_float.o \
+	$(XATRIX_DIR)/m_flyer.o \
+	$(XATRIX_DIR)/m_gekk.o \
+	$(XATRIX_DIR)/m_gladb.o \
+	$(XATRIX_DIR)/m_gladiator.o \
+	$(XATRIX_DIR)/m_gunner.o \
+	$(XATRIX_DIR)/m_hover.o \
+	$(XATRIX_DIR)/m_infantry.o \
+	$(XATRIX_DIR)/m_insane.o \
+	$(XATRIX_DIR)/m_medic.o \
+	$(XATRIX_DIR)/m_move.o \
+	$(XATRIX_DIR)/m_mutant.o \
+	$(XATRIX_DIR)/m_parasite.o \
+	$(XATRIX_DIR)/m_soldier.o \
+	$(XATRIX_DIR)/m_supertank.o \
+	$(XATRIX_DIR)/m_tank.o \
+	$(XATRIX_DIR)/p_client.o \
+	$(XATRIX_DIR)/p_hud.o \
+	$(XATRIX_DIR)/p_trail.o \
+	$(XATRIX_DIR)/p_view.o \
+	$(XATRIX_DIR)/p_weapon.o
+
+$(BUILDDIR)/xatrix.o: $(XATRIX_OBJS)
+	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
+	@$(LD) -r -o $@ $(XATRIX_OBJS)
+
+-include $(XATRIX_OBJS:.o=.d)
+#############################################################################
+# SDK
+#############################################################################
+
+# Add in PSPSDK includes and libraries.
+INCDIR   := $(INCDIR) . $(PSPSDK)/include
+LIBDIR   := $(LIBDIR) . $(PSPSDK)/lib
+
+CFLAGS   := $(addprefix -I,$(INCDIR)) $(CFLAGS)
+CXXFLAGS := $(CFLAGS) $(CXXFLAGS)
+ASFLAGS  := $(CFLAGS) $(ASFLAGS)
+LDFLAGS  := $(addprefix -L,$(LIBDIR)) -Wl,-q,-T$(PSPSDK)/lib/linkfile.prx -nostartfiles $(LDFLAGS)
+
+CFLAGS += -D_PSP_FW_VERSION=$(PSP_FW_VERSION)
+
+#PSPSDK_LIBS = -lpspdebug -lpspdisplay -lpspge -lpspctrl -lpspsdk
+#LIBS     := $(LIBS) $(PSPSDK_LIBS) -lpsputility -lpspuser -lpspkernel
+
+#############################################################################
+# TARGETS
+#############################################################################
+$(BUILDDIR)/%.o: $(SRCDIR)/%.c
+	@echo "\033[38;5;142m"$(notdir $<)"\033[0m"
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.o: $(SRCDIR)/%.S
+	@echo "\033[38;5;152m"$(notdir $<)"\033[0m"
+	@mkdir -p $(dir $@)
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.sym: $(TARGET).elf
+	@echo "\033[38;5;140mBuilding "$(notdir $@)"\033[0m"
+	@readelf -sW $< | grep GLOBAL | gawk --non-decimal-data '{ printf("%08x %s,0008\n", ("0x"$$2)+$(PSP_BASE_ADDR), $$8) }' | grep -v '^_' > $@
+
+$(TARGET).elf: $(OBJS)
+	@echo "\033[38;5;82m"$(notdir $<)" -> "$(notdir $@)"\033[0m"
+	@$(LINK.c) $^ $(LIBS) -o $@
+
+%.prx: %.elf
+	@echo "\033[38;5;9m"$(notdir $<)" -> "$(notdir $@)"\033[0m"
+	@psp-prxgen $< $@
+
+%.c: %.exp
+	@echo "\033[38;5;5m"$(notdir $<)" -> "$(notdir $@)"\033[0m"
+	@psp-build-exports -b $< > $@

@@ -5,11 +5,13 @@ endif
 
 BUILD := debug
 REF := soft
-GAME := base
+GAME := baseq2
 
 USE_VAUDIO := 0
 USE_CDMP3 := 0
 USE_STDIN := 0
+
+USE_STATIC_LINK := 0
 
 RESOURCES        = $(SRCDIR)/psp/resources/*
 
@@ -49,7 +51,7 @@ GAME_DIR          = $(BUILDDIR)/game
 CTF_DIR           = $(BUILDDIR)/ctf
 XATRIX_DIR        = $(BUILDDIR)/xatrix
 
-STLINK_CFLAGS = -DREF_HARD_LINKED -DGAME_HARD_LINKED
+STLINK_CFLAGS = -DREF_HARD_LINKED
 HASH_CFLAGS = -DUSE_HASH_FOR_TEXTURES -DUSE_HASH_FOR_SFX -DUSE_HASH_FOR_FILES
 
 BASE_CFLAGS = -MD -G0 -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS)
@@ -58,12 +60,16 @@ release_CFLAGS = $(BASE_CFLAGS) -O3 \
 	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \
 	-falign-jumps=2 -falign-functions=2
 
-debug_CFLAGS= -g $(BASE_CFLAGS) -DUSE_STDIN
+debug_CFLAGS= -g $(BASE_CFLAGS) -DUSE_STDIN -DDEBUG
 
 prof_CFLAGS= -g -pg -O0 $(BASE_CFLAGS) -DUSE_GPROF
 
 ifeq ($(USE_STDIN), 1)
 BASE_CFLAGS += -DUSE_STDIN
+endif
+
+ifeq ($(USE_STATIC_LINK), 1)
+STLINK_CFLAGS += -DGAME_HARD_LINKED
 endif
 
 #LDFLAGS = -lm
@@ -91,7 +97,7 @@ endif
 #############################################################################
 VALID_BUILD = debug release prof
 VALID_REF = soft gu
-VALID_GAMES = base ctf xatrix
+VALID_GAMES = baseq2 ctf xatrix
 
 ifeq (,$(filter $(BUILD),$(VALID_BUILD)))
 $(error Invalid build mode - [$(BUILD)]! Supported - [$(VALID_BUILD)])
@@ -114,8 +120,13 @@ endif
 
 OBJS = \
 	$(BUILDDIR)/quake2.o \
-	$(BUILDDIR)/ref_$(REF).o \
-	$(BUILDDIR)/$(GAME).o
+	$(BUILDDIR)/ref_$(REF).o
+
+PRX_EXPORTS = $(PSP_DIR)/export/exports.o
+
+ifeq ($(USE_STATIC_LINK), 1)
+OBJS += $(BUILDDIR)/$(GAME).o
+endif
 
 all: $(EXTRA_TARGETS) $(FINAL_TARGET)
 
@@ -123,7 +134,7 @@ install: all
 	@echo "Installing..."
 	@mkdir -pv $(INSTALL_DIR)
 	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
-	@cp -fv $(RESOURCES) $(INSTALL_DIR)
+	@cp -nv $(RESOURCES) $(INSTALL_DIR)
 	@echo "Done."
 
 install-prx: install
@@ -157,7 +168,6 @@ QUAKE2_OBJS = \
 	$(CLIENT_DIR)/snd_mem.o \
 	$(CLIENT_DIR)/snd_mix.o \
 	$(CLIENT_DIR)/qmenu.o \
-	$(GAME_DIR)/m_flash.o \
 	\
 	$(COMMON_DIR)/cmd.o \
 	$(COMMON_DIR)/cmodel.o \
@@ -189,6 +199,7 @@ QUAKE2_OBJS = \
 	\
 	$(SHARED_DIR)/q_shared.o \
 	$(SHARED_DIR)/BOPS.o \
+	$(SHARED_DIR)/m_flash.o \
 	$(COMMON_DIR)/pmove.o
 
 VAUDIO_OBJS = $(PSP_DIR)/snd_psp_vaudio.o
@@ -265,7 +276,7 @@ GAME_OBJS = \
 #	$(SHARED_DIR)/q_shared.o \
 #	$(GAME_DIR)/m_flash.o
 
-$(BUILDDIR)/base.o: $(GAME_OBJS)
+$(BUILDDIR)/baseq2.o: $(GAME_OBJS)
 	@echo "\033[38;5;88m"$(notdir $@)"\033[0m"
 	@$(LD) -r -o $@ $(GAME_OBJS)
 

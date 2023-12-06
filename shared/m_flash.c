@@ -19,12 +19,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 */
 // m_flash.c
 
-#include "../shared/q_shared.h"
+#include "q_shared.h"
 
 // this file is included in both the game dll and quake2,
 // the game needs it to source shot locations, the client
 // needs it to position muzzle flashes
-vec3_t monster_flash_offset [] =
+static vec3_t monster_flash_offset_tab [] =
 {
 // flash 0 is not used
 	0.0, 0.0, 0.0,
@@ -486,3 +486,5 @@ vec3_t monster_flash_offset [] =
 // end of table
 	0.0, 0.0, 0.0
 };
+
+vec3_t *monster_flash_offset = monster_flash_offset_tab;

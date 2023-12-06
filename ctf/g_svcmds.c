@@ -237,37 +237,31 @@ SV_WriteIP_f
 */
 void SVCmd_WriteIP_f (void)
 {
-	FILE	*f;
+	file_t	*f;
 	char	name[MAX_OSPATH];
 	byte	b[4];
 	int		i;
-	cvar_t	*game;
 
-	game = gi.cvar("game", "", 0);
-
-	if (!*game->string)
-		sprintf (name, "%s/listip.cfg", GAMEVERSION);
-	else
-		sprintf (name, "%s/listip.cfg", game->string);
+	Com_sprintf (name, sizeof(name), "listip.cfg");
 
 	gi.cprintf (NULL, PRINT_HIGH, "Writing %s.\n", name);
 
-	f = fopen (name, "wb");
+	f = gi.FileOpen (name, FS_MODE_WRITE | FS_PATH_GAMEDIR);
 	if (!f)
 	{
 		gi.cprintf (NULL, PRINT_HIGH, "Couldn't open %s\n", name);
 		return;
 	}
-	
-	fprintf(f, "set filterban %d\n", (int)filterban->value);
+
+	gi.FilePrintf (f, "set filterban %d\n", (int)filterban->value);
 
 	for (i=0 ; i<numipfilters ; i++)
 	{
 		*(unsigned *)b = ipfilters[i].compare;
-		fprintf (f, "sv addip %i.%i.%i.%i\n", b[0], b[1], b[2], b[3]);
+		gi.FilePrintf  (f, "sv addip %i.%i.%i.%i\n", b[0], b[1], b[2], b[3]);
 	}
-	
-	fclose (f);
+
+	gi.FileClose (f);
 }
 
 /*

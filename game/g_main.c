@@ -20,6 +20,9 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "g_local.h"
 
+vec3_t	vec3_origin = {0,0,0};
+vec3_t	*monster_flash_offset;
+
 game_locals_t	game;
 level_locals_t	level;
 game_import_t	gi;
@@ -111,6 +114,8 @@ and global variables
 game_export_t *GetGameAPI (game_import_t *import)
 {
 	gi = *import;
+
+	monster_flash_offset = gi.monster_flash_offset;
 
 	globals.apiversion = GAME_API_VERSION;
 	globals.Init = InitGame;

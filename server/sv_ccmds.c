@@ -285,7 +285,7 @@ void SV_WriteLevelFile (void)
 	CM_WritePortalState (f);
 	FS_FClose (f);
 
-	Com_sprintf (name, sizeof(name), "%s/save/current/%s.sav", FS_GetWriteDir (FS_PATH_GAMEDIR), sv.name);
+	Com_sprintf (name, sizeof(name), "save/current/%s.sav", sv.name);
 	ge->WriteLevel (name);
 }
 
@@ -313,7 +313,7 @@ void SV_ReadLevelFile (void)
 	CM_ReadPortalState (f);
 	FS_FClose (f);
 
-	Com_sprintf (name, sizeof(name), "%s/save/current/%s.sav", FS_GetWriteDir (FS_PATH_GAMEDIR), sv.name);
+	Com_sprintf (name, sizeof(name), "save/current/%s.sav", sv.name);
 	ge->ReadLevel (name);
 }
 
@@ -386,7 +386,7 @@ void SV_WriteServerFile (qboolean autosave)
 	FS_FClose (f);
 
 	// write game state
-	Com_sprintf (name, sizeof(name), "%s/save/current/game.ssv", FS_GetWriteDir (FS_PATH_GAMEDIR));
+	Com_sprintf (name, sizeof(name), "save/current/game.ssv");
 	ge->WriteGame (name, autosave);
 }
 
@@ -437,7 +437,7 @@ void SV_ReadServerFile (void)
 	strcpy (svs.mapcmd, mapcmd);
 
 	// read game state
-	Com_sprintf (name, sizeof(name), "%s/save/current/game.ssv", FS_GetWriteDir (FS_PATH_GAMEDIR));
+	Com_sprintf (name, sizeof(name), "save/current/game.ssv");
 	ge->ReadGame (name);
 }
 

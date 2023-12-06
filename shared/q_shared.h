@@ -1029,7 +1029,7 @@ typedef struct
 
 // ROGUE
 
-extern	vec3_t monster_flash_offset [];
+extern	vec3_t *monster_flash_offset;
 
 
 // temp entity events

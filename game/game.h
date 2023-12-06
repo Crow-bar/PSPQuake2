@@ -173,6 +173,18 @@ typedef struct
 	void	(*AddCommandString) (char *text);
 
 	void	(*DebugGraph) (float value, int color);
+
+	// filesystem
+	file_t		*(*FileOpen) (const char *filename, int flags);
+	off_t		(*FileLength) (file_t *file);
+	off_t		(*FileRead) (file_t *file, const void *buffer, size_t size);
+	off_t		(*FileWrite) (file_t *file, const void *buffer, size_t size);
+	int			(*FilePrintf) (file_t *file, const char *format, ...);
+	int			(*FileSeek) (file_t *file, off_t offset, int whence);
+	void		(*FileClose) (file_t *file);
+	const char	*(*GetWriteDir) (int flags);
+
+	vec3_t		*monster_flash_offset;
 } game_import_t;
 
 //

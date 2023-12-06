@@ -1290,7 +1290,7 @@ The server calls this before shutting down or loading a new map
 */
 void Com_HunkClear (void)
 {
-	Com_Printf ("Hunk clear\n");
+	Com_DPrintf ("Hunk clear\n");
 
 	if (com_hunkbase)
 		Hunk_FreeToLowMark (com_hunkbase);
@@ -1320,7 +1320,7 @@ The client calls this before starting
 */
 void Com_HunkClearToMark (void)
 {
-	Com_Printf ("Hunk clear to mark\n");
+	Com_DPrintf ("Hunk clear to mark\n");
 
 	if (com_hunkmark)
 		Hunk_FreeToLowMark (com_hunkmark);
