@@ -122,7 +122,12 @@ OBJS = \
 	$(BUILDDIR)/quake2.o \
 	$(BUILDDIR)/ref_$(REF).o
 
+ifeq ($(BUILD_PRX), 1)
 PRX_EXPORTS = $(PSP_DIR)/export/exports.o
+else
+EXPORT_OBJ=$(PSP_DIR)/export/exports.o
+EXTRA_CLEAN += $(EXPORT_OBJ)
+endif
 
 ifeq ($(USE_STATIC_LINK), 1)
 OBJS += $(BUILDDIR)/$(GAME).o
