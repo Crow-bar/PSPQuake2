@@ -120,19 +120,18 @@ qboolean OSK_KeyEvent(int *key, qboolean down)
 			break;
 		}
 		break;
+	case K_ESCAPE:
+	case K_START_BUTTON:
+	case K_B_BUTTON:
+		osk_state.active = false;
+		break;
 	case K_UPARROW:
 		if(down && --osk_state.cursor_y < 0)
-		{
 			osk_state.cursor_y = OSK_MAX_LINES - 1;
-			osk_state.active = false;
-		}
 		break;
 	case K_DOWNARROW:
 		if(down && ++osk_state.cursor_y >= OSK_MAX_LINES )
-		{
 			osk_state.cursor_y = 0;
-			osk_state.active = false;
-		}
 		break;
 	case K_LEFTARROW:
 		if( down && --osk_state.cursor_x < 0 )
