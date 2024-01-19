@@ -338,7 +338,7 @@ static inline float FloatSwap (float f)
 }
 #endif
 
-#ifdef BIG_ENDIAN
+#if _BYTE_ORDER == _BIG_ENDIAN
 #define BigShort(x)		(x)
 #define LittleShort(x)	ShortSwap(x)
 #define BigLong(x)		(x)

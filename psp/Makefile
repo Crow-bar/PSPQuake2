@@ -54,7 +54,7 @@ XATRIX_DIR        = $(BUILDDIR)/xatrix
 STLINK_CFLAGS = -DREF_HARD_LINKED
 HASH_CFLAGS = -DUSE_HASH_FOR_TEXTURES -DUSE_HASH_FOR_SFX -DUSE_HASH_FOR_FILES
 
-BASE_CFLAGS = -MD -G0 -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS)
+BASE_CFLAGS = -MD -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS)
 
 release_CFLAGS = $(BASE_CFLAGS) -O3 \
 	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \

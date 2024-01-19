@@ -20,8 +20,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "g_local.h"
 
-vec3_t	vec3_origin = {0,0,0};
-vec3_t	*monster_flash_offset;
 
 game_locals_t	game;
 level_locals_t	level;
@@ -35,6 +33,14 @@ int meansOfDeath;
 
 edict_t		*g_edicts;
 
+#ifndef GAME_HARD_LINKED
+vec3_t	vec3_origin = {0,0,0};
+vec3_t	*monster_flash_offset;
+
+cvar_t	*maxclients;
+cvar_t	*dedicated;
+#endif
+
 cvar_t	*deathmatch;
 cvar_t	*coop;
 cvar_t	*dmflags;
@@ -46,10 +52,8 @@ cvar_t	*capturelimit;
 cvar_t	*instantweap;
 //ZOID
 cvar_t	*password;
-cvar_t	*maxclients;
 cvar_t	*maxentities;
 cvar_t	*g_select_empty;
-cvar_t	*dedicated;
 
 cvar_t	*filterban;
 
