@@ -407,7 +407,7 @@ void R_DrawEntitiesOnList (void)
 ** GL_DrawParticles
 **
 */
-void GL_DrawParticles( int num_particles, const particle_t particles[], const unsigned colortable[768] )
+void GL_DrawParticles( int num_particles, const particle_t particles[] )
 {
 	const particle_t *p;
 	int				i;
@@ -538,7 +538,7 @@ void R_DrawParticles (void)
 	}
 	else
 	{
-		GL_DrawParticles (r_newrefdef.num_particles, r_newrefdef.particles, d_8to24table);
+		GL_DrawParticles (r_newrefdef.num_particles, r_newrefdef.particles);
 	}
 }
 

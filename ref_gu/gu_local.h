@@ -349,7 +349,7 @@ void GU_Clip (gu_vert_ftv_t *uv, int uvc, gu_vert_ftv_t **cv, int* cvc);
 /*
 ** GL extension emulation functions
 */
-void GL_DrawParticles( int n, const particle_t particles[], const unsigned colortable[768] );
+void GL_DrawParticles( int n, const particle_t particles[] );
 
 typedef struct
 {
