@@ -54,8 +54,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define MP3_FLAG_PAUSE				0x00002000
 
 
-static char  mp3buf[32*1024]      __attribute__((aligned(64)));
-static short pcmbuf[32*(1152/2)]  __attribute__((aligned(64)));
+static SceUChar8 mp3buf[32*1024] __attribute__((aligned(64)));
+static SceUChar8 pcmbuf[32*1152] __attribute__((aligned(64)));
 
 static struct
 {
@@ -307,10 +307,10 @@ void CDAudio_Play (int track, qboolean looping)
 	}
 	mp3.flags |= MP3_FLAG_RES_MP3_FILE;
 
+	memset (&mp3init, 0, sizeof(SceMp3InitArg));
+
 	mp3init.mp3StreamStart = CDAudio_FindHead (mp3.file);
 	mp3init.mp3StreamEnd = CDAudio_FindTail (mp3.file);
-	mp3init.unk1 = 0;
-	mp3init.unk2 = 0;
 	mp3init.mp3Buf = mp3buf;
 	mp3init.mp3BufSize = sizeof(mp3buf);
 	mp3init.pcmBuf = pcmbuf;
