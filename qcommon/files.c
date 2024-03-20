@@ -1085,7 +1085,9 @@ pack_t *FS_LoadPackFile (char *packfile)
 		Com_Error (ERR_FATAL, "%s has %i files", packfile, numpackfiles);
 
 	packfiles = Hunk_AllocName (header.dirlen, "packfiles");
+#ifdef USE_HASH_FOR_FILES
 	packhashes = Hunk_AllocName (numpackfiles * sizeof(filehash_t), "packhashes");
+#endif
 
 #ifdef PSP_FIO
 	sceIoLseek (packhandle, header.dirofs, PSP_SEEK_SET);
