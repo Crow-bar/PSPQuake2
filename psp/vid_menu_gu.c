@@ -37,6 +37,7 @@ static menuframework_s s_video_menu;
 static menuslider_s s_screensize_slider;
 static menuslider_s s_brightness_slider;
 static menulist_s   s_drawfps_list;
+static menulist_s   s_vsync_list;
 static menuslider_s s_tq_slider;
 static menulist_s   s_dynamic_lighting_list;
 static menulist_s   s_light_glow_list;
@@ -58,6 +59,11 @@ static void BrightnessCallback (void *unused)
 static void DrawFpsCallback (void *unused)
 {
 	Cvar_SetValue ("scr_drawfps", s_drawfps_list.curvalue);
+}
+
+static void VSyncCallback (void *unused)
+{
+	Cvar_SetValue ("gl_vsync", s_vsync_list.curvalue);
 }
 
 static void TgCallback (void *unused)
@@ -93,6 +99,7 @@ static void ParticleSizeCallback (void *unused)
 void VID_MenuInit (void)
 {
 	static const char *yesno_names[] = {"no", "yes", 0};
+	static const char *vsync_names[] = {"no", "yes", "adaptive", 0};
 	static const char *glow_names[]  = {"dlm only", "dlm + glow", "glow only", 0};
 
 	if (!scr_viewsize)
@@ -135,9 +142,17 @@ void VID_MenuInit (void)
 	s_drawfps_list.itemnames        = yesno_names;
 	s_drawfps_list.curvalue         = scr_drawfps->value;
 
+	s_vsync_list.generic.type     = MTYPE_SPINCONTROL;
+	s_vsync_list.generic.x        = 0;
+	s_vsync_list.generic.y        = 60;
+	s_vsync_list.generic.name     = "VSync";
+	s_vsync_list.generic.callback = VSyncCallback;
+	s_vsync_list.itemnames        = vsync_names;
+	s_vsync_list.curvalue         = Cvar_VariableValue ("gl_vsync");
+
 	s_tq_slider.generic.type     = MTYPE_SLIDER;
 	s_tq_slider.generic.x        = 0;
-	s_tq_slider.generic.y        = 60;
+	s_tq_slider.generic.y        = 70;
 	s_tq_slider.generic.name     = "Texture quality";
 	s_tq_slider.generic.callback = TgCallback;
 	s_tq_slider.minvalue         = 0;
@@ -146,7 +161,7 @@ void VID_MenuInit (void)
 
 	s_dynamic_lighting_list.generic.type     = MTYPE_SPINCONTROL;
 	s_dynamic_lighting_list.generic.x        = 0;
-	s_dynamic_lighting_list.generic.y        = 70;
+	s_dynamic_lighting_list.generic.y        = 80;
 	s_dynamic_lighting_list.generic.name     = "Dynamic lighting";
 	s_dynamic_lighting_list.generic.callback = DynamicLightingCallback;
 	s_dynamic_lighting_list.itemnames        = yesno_names;
@@ -154,7 +169,7 @@ void VID_MenuInit (void)
 
 	s_light_glow_list.generic.type     = MTYPE_SPINCONTROL;
 	s_light_glow_list.generic.x        = 0;
-	s_light_glow_list.generic.y        = 80;
+	s_light_glow_list.generic.y        = 90;
 	s_light_glow_list.generic.name     = "Light glow effect";
 	s_light_glow_list.generic.callback = LightGlowCallback;
 	s_light_glow_list.itemnames        = glow_names;
@@ -162,7 +177,7 @@ void VID_MenuInit (void)
 
 	s_simple_particles_list.generic.type     = MTYPE_SPINCONTROL;
 	s_simple_particles_list.generic.x        = 0;
-	s_simple_particles_list.generic.y        = 90;
+	s_simple_particles_list.generic.y        = 100;
 	s_simple_particles_list.generic.name     = "Simple particles";
 	s_simple_particles_list.generic.callback = SimpleParticlesCallback;
 	s_simple_particles_list.itemnames        = yesno_names;
@@ -171,7 +186,7 @@ void VID_MenuInit (void)
 	s_particle_size_slider.generic.type     = MTYPE_SLIDER;
 	s_particle_size_slider.generic.flags    = (s_simple_particles_list.curvalue > 0) ? QMF_INACTIVE : 0;
 	s_particle_size_slider.generic.x        = 0;
-	s_particle_size_slider.generic.y        = 100;
+	s_particle_size_slider.generic.y        = 110;
 	s_particle_size_slider.generic.name     = "Particle size";
 	s_particle_size_slider.generic.callback = ParticleSizeCallback;
 	s_particle_size_slider.minvalue         = 1;
@@ -181,6 +196,7 @@ void VID_MenuInit (void)
 	Menu_AddItem (&s_video_menu, (void *)&s_screensize_slider);
 	Menu_AddItem (&s_video_menu, (void *)&s_brightness_slider);
 	Menu_AddItem (&s_video_menu, (void *)&s_drawfps_list);
+	Menu_AddItem (&s_video_menu, (void *)&s_vsync_list);
 	Menu_AddItem (&s_video_menu, (void *)&s_tq_slider);
 	Menu_AddItem (&s_video_menu, (void *)&s_dynamic_lighting_list);
 	Menu_AddItem (&s_video_menu, (void *)&s_light_glow_list);

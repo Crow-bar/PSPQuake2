@@ -282,13 +282,23 @@ as yet to be determined.
 */
 void GU_EndFrame (void)
 {
+	static int v_count = 0, v_count_last = 0;
+
 	// finish rendering.
-	sceGuFinish();
+	sceGuFinish ();
 	sceGuSync (GU_SYNC_FINISH, GU_SYNC_WAIT);
 
 	// vsync
-	if (gl_vsync->value || gl_netactive->value)
-		sceDisplayWaitVblankStart();
+	if (gl_vsync->value == 1.0f || gl_netactive->value) // every frame
+	{
+		sceDisplayWaitVblankStart ();
+	}
+	else if(gl_vsync->value == 2.0f) // adaptive
+	{
+		while ((v_count = sceDisplayGetVcount ()) < v_count_last + 1)
+			sceDisplayWaitVblankStart ();
+		v_count_last = v_count;
+	}
 
 	// swap the buffers.
 	sceGuSwapBuffers();
