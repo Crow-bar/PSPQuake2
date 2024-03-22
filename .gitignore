@@ -3,5 +3,6 @@
 */release
 */prof
 */dist
+*/package
 *.o
 *.d
