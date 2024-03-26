@@ -17,14 +17,14 @@ FIXUP    = psp-fixup-imports
 # SETUP
 #############################################################################
 
-BUILD := debug
+BUILD := release
 GAME := baseq2
 
 TARGET           = $(BUILDDIR)/gamepsp
 FINAL_TARGET     = $(TARGET).prx
 
 PSP_FW_VERSION   = 660
-PSP_BASE_ADDR    = 0x08804000
+PSP_BASE_ADDR    = 0
 
 #############################################################################
 # DIRS
@@ -60,11 +60,11 @@ VALID_BUILD = debug release
 VALID_GAMES = baseq2 ctf xatrix
 
 ifeq (,$(filter $(BUILD),$(VALID_BUILD)))
-$(error Invalid build mode - [$(BUILD)]! Supported - [$(VALID_BUILD)])
+$(error Invalid build mode: $(BUILD)! Valid are: $(VALID_BUILD))
 endif
 
 ifeq (,$(filter $(GAME),$(VALID_GAMES)))
-$(error Invalid game - [$(GAME)]! Supported - [$(VALID_GAMES)])
+$(error Invalid game: $(GAME)! Valid are: $(VALID_GAMES))
 endif
 
 BUILDDIR = $(BUILD)/sharedlibs/$(GAME)
@@ -89,27 +89,26 @@ install: all
 clean-all: clean-debug clean-release
 
 clean-debug:
-	$(MAKE) -f Makeshgame clean BUILD=debug
+	@for game in $(VALID_GAMES); \
+	do \
+		$(MAKE) -s -f Makefile.game \
+			BUILD=debug \
+			GAME=$$game \
+			clean ; \
+	done;
 
 clean-release:
-	$(MAKE) -f Makeshgame clean BUILD=release
+	@for game in $(VALID_GAMES); \
+	do \
+		$(MAKE) -s -f Makefile.game \
+			BUILD=release \
+			GAME=$$game \
+			clean ; \
+	done;
 
 clean:
-	-rm -f \
-	$(FINAL_TARGET) \
-	$(TARGET).elf \
-	\
-	$(OBJS) \
-	$(SHARED_OBJS) \
-	$(GAME_OBJS) \
-	$(CTF_OBJS) \
-	$(XATRIX_OBJS) \
-	\
-	$(OBJS:.o=.d) \
-	$(SHARED_OBJS:.o=.d) \
-	$(GAME_OBJS:.o=.d) \
-	$(CTF_OBJS:.o=.d) \
-	$(XATRIX_OBJS:.o=.d)
+	@-rm -rf $(BUILDDIR)
+	@echo "Game cleaning [$(BUILD) $(GAME)] - done."
 
 #############################################################################
 # MAIN
@@ -320,9 +319,14 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.S
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILDDIR)/%.o: $(SRCDIR)/%.exp
+	@echo "\033[38;5;45m"$(notdir $<)"\033[0m"
+	@mkdir -p $(dir $@)
+	@psp-build-exports -b $< | $(CC) $(CFLAGS) -fno-builtin -xc -c - -o $@
+
 $(BUILDDIR)/%.sym: $(TARGET).elf
 	@echo "\033[38;5;140mBuilding "$(notdir $@)"\033[0m"
-	@readelf -sW $< | grep GLOBAL | gawk --non-decimal-data '{ printf("%08x %s,0008\n", ("0x"$$2)+$(PSP_BASE_ADDR), $$8) }' | grep -v '^_' > $@
+	@readelf -sW $< | grep GLOBAL | gawk --non-decimal-data '{ printf("%08x %s,%04x\n", ("0x"$$2)+$(PSP_BASE_ADDR), $$8, $$3) }' | grep -v '^_' > $@
 
 $(TARGET).elf: $(OBJS)
 	@echo "\033[38;5;82m"$(notdir $<)" -> "$(notdir $@)"\033[0m"

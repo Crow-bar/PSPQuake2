@@ -3,22 +3,25 @@ ifeq ($(PSPSDK),)
 $(error PSPSDK wasn't set)
 endif
 
-BUILD := debug
-REF := soft
+BUILD := release
+REF := gu
 GAME := baseq2
 
 USE_VAUDIO := 0
-USE_CDMP3 := 0
+USE_CDMP3 := 1
 USE_STDIN := 0
 
 USE_STATIC_LINK := 0
 
-RESOURCES        = $(SRCDIR)/psp/resources/*
+PSP_APP_NAME     = PSPQuake2
+PSP_APP_VERSION  = PSP-$(BUILD)-$(shell git describe --dirty --tags 2>/dev/null || git describe --dirty --always 2>/dev/null)
 
-TARGET           = $(BUILDDIR)/PSPQuake2
+PSP_PACKAGE_NAME = Quake2-$(PSP_APP_VERSION)
+
+TARGET           = $(BUILDDIR)/$(PSP_APP_NAME)
 EXTRA_TARGETS    = $(BUILDDIR)/EBOOT.PBP
 
-PSP_EBOOT_TITLE  = PSPQuake2
+PSP_EBOOT_TITLE  = $(PSP_APP_NAME)
 #PSP_EBOOT_ICON   = ICON0.png
 #PSP_EBOOT_PIC1   = PIC0.png
 PSP_EBOOT_SFO    = $(BUILDDIR)/PARAM.SFO
@@ -30,7 +33,6 @@ PSP_FW_VERSION   = 660
 
 PSP_BASE_ADDR    = 0x08804000
 
-
 #############################################################################
 # DIRS
 #############################################################################
@@ -38,6 +40,9 @@ PSP_BASE_ADDR    = 0x08804000
 SRCDIR=..
 
 INSTALL_DIR       = dist
+PACKAGE_DIR       = package
+
+RESOURCE_DIR      = $(SRCDIR)/psp/resources/*
 
 CLIENT_DIR        = $(BUILDDIR)/client
 SERVER_DIR        = $(BUILDDIR)/server
@@ -54,7 +59,7 @@ XATRIX_DIR        = $(BUILDDIR)/xatrix
 STLINK_CFLAGS = -DREF_HARD_LINKED
 HASH_CFLAGS = -DUSE_HASH_FOR_TEXTURES -DUSE_HASH_FOR_SFX -DUSE_HASH_FOR_FILES
 
-BASE_CFLAGS = -MD -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS)
+BASE_CFLAGS = -MD -mno-gpopt -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS) -DEXT_VERSION=\"$(PSP_APP_VERSION)\"
 
 release_CFLAGS = $(BASE_CFLAGS) -O3 \
 	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \
@@ -97,18 +102,19 @@ endif
 #############################################################################
 VALID_BUILD = debug release prof
 VALID_REF = soft gu
-VALID_GAMES = baseq2 ctf xatrix
+VALID_GAMES = baseq2 ctf
+#xatrix
 
 ifeq (,$(filter $(BUILD),$(VALID_BUILD)))
-$(error Invalid build mode - [$(BUILD)]! Supported - [$(VALID_BUILD)])
+$(error Invalid build mode: $(BUILD)! Valid are: $(VALID_BUILD))
 endif
 
 ifeq (,$(filter $(REF),$(VALID_REF)))
-$(error Invalid renderer - [$(REF)]! Supported - [$(VALID_REF)])
+$(error Invalid renderer: $(REF)! Valid are: $(VALID_REF))
 endif
 
 ifeq (,$(filter $(GAME),$(VALID_GAMES)))
-$(error Invalid game - [$(GAME)]! Supported - [$(VALID_GAMES)])
+$(error Invalid game: $(GAME)! Valid are: $(VALID_GAMES))
 endif
 
 BUILDDIR = $(BUILD)
@@ -122,29 +128,61 @@ OBJS = \
 	$(BUILDDIR)/quake2.o \
 	$(BUILDDIR)/ref_$(REF).o
 
-ifeq ($(BUILD_PRX), 1)
-PRX_EXPORTS = $(PSP_DIR)/export/exports.o
-else
-EXPORT_OBJ=$(PSP_DIR)/export/exports.o
-EXTRA_CLEAN += $(EXPORT_OBJ)
-endif
-
 ifeq ($(USE_STATIC_LINK), 1)
 OBJS += $(BUILDDIR)/$(GAME).o
+else
+EXPORT_OBJS = $(PSP_DIR)/export/exports.o
+ifeq ($(BUILD_PRX), 1)
+PRX_EXPORTS = $(EXPORT_OBJS)
+else
+EXPORT_OBJ = $(EXPORT_OBJS)
+EXTRA_CLEAN += $(EXPORT_OBJS)
 endif
+endif
+
+.PHONY: package
 
 all: $(EXTRA_TARGETS) $(FINAL_TARGET)
 
 install: all
 	@echo "Installing..."
-	@mkdir -pv $(INSTALL_DIR)
+	@mkdir -p $(INSTALL_DIR)
 	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
-	@cp -nv $(RESOURCES) $(INSTALL_DIR)
+	@cp -nv $(RESOURCE_DIR) $(INSTALL_DIR)
 	@echo "Done."
 
 install-prx: install
 	@echo "Installing prx..."
 	@cp -fv $(FINAL_TARGET) $(INSTALL_DIR)
+	@echo "Done."
+
+package:
+	@echo Creating $(PACKAGE_DIR)/$(PSP_PACKAGE_NAME)
+	@rm -f $(PACKAGE_DIR)/$(PSP_PACKAGE_NAME).zip
+	@$(MAKE) -s \
+		BUILD=$(BUILD) \
+		REF=$(REF) \
+		GAME=$(GAME) \
+		USE_VAUDIO=$(USE_VAUDIO) \
+		USE_CDMP3=$(USE_CDMP3) \
+		USE_STDIN=$(USE_STDIN) \
+		USE_STATIC_LINK=$(USE_STATIC_LINK) \
+		INSTALL_DIR=$(PACKAGE_DIR)/$(PSP_PACKAGE_NAME)/PSPQuake2 \
+		install
+
+	@if [ 0 -eq $(USE_STATIC_LINK) ]; \
+	then \
+		for game in $(VALID_GAMES); \
+		do \
+			$(MAKE) -s -f Makefile.game \
+				BUILD=$(BUILD) \
+				GAME=$$game \
+				INSTALL_DIR=$(PACKAGE_DIR)/$(PSP_PACKAGE_NAME)/PSPQuake2 \
+				install ; \
+		done ; \
+	fi;
+	@cd $(PACKAGE_DIR)/$(PSP_PACKAGE_NAME) && zip -rdv ../$(PSP_PACKAGE_NAME).zip PSPQuake2
+	@rm -rf $(PACKAGE_DIR)/$(PSP_PACKAGE_NAME)
 	@echo "Done."
 
 
@@ -443,18 +481,19 @@ $(BUILDDIR)/ref_gu.o: $(REF_GU_OBJS)
 #############################################################################
 
 clean-all: clean-debug clean-release clean-prof
+	@$(MAKE) -s -f Makefile.game clean-all
 
 clean-debug:
-	$(MAKE) clean2 BUILD=debug
+	@$(MAKE) -s clean2 BUILD=debug
 
 clean-release:
-	$(MAKE) clean2 BUILD=release
+	@$(MAKE) -s clean2 BUILD=release
 
 clean-prof:
-	$(MAKE) clean2 BUILD=prof
+	@$(MAKE) -s clean2 BUILD=prof
 
 clean2: clean
-	-rm -f \
+	@-rm -f \
 	$(QUAKE2_OBJS) \
 	$(VAUDIO_OBJS) \
 	$(CDMP3_OBJS) \
@@ -464,6 +503,8 @@ clean2: clean
 	$(REF_SOFT_OBJS) \
 	$(REF_GU_OBJS) \
 	$(OBJS) \
+	$(EXPORT_OBJS:.o=.d) \
+	$(EXPORT_OBJS:.o=.c) \
 	$(QUAKE2_OBJS:.o=.d) \
 	$(VAUDIO_OBJS:.o=.d) \
 	$(CDMP3_OBJS:.o=.d) \
@@ -472,6 +513,7 @@ clean2: clean
 	$(XATRIX_OBJS:.o=.d) \
 	$(REF_SOFT_OBJS:.o=.d) \
 	$(REF_GU_OBJS:.o=.d)
+	@echo "Engine cleaning [$(BUILD)] - done."
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	@echo "\033[38;5;142m"$(notdir $<)"\033[0m"
@@ -483,9 +525,14 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.S
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILDDIR)/%.o: $(SRCDIR)/%.exp
+	@echo "\033[38;5;45m"$(notdir $<)"\033[0m"
+	@mkdir -p $(dir $@)
+	@psp-build-exports -b $< | $(CC) $(CFLAGS) -fno-builtin -xc -c - -o $@
+
 $(BUILDDIR)/%.sym: $(TARGET).elf
 	@echo "\033[38;5;140mBuilding "$(notdir $@)"\033[0m"
-	@readelf -sW $< | grep GLOBAL | gawk --non-decimal-data '{ printf("%08x %s,0008\n", ("0x"$$2)+$(PSP_BASE_ADDR), $$8) }' | grep -v '^_' > $@
+	@readelf -sW $< | grep GLOBAL | gawk --non-decimal-data '{ printf("%08x %s,%04x\n", ("0x"$$2)+$(PSP_BASE_ADDR), $$8, $$3) }' | grep -v '^_' > $@
 
 PSPSDK=$(shell psp-config --pspsdk-path)
 include $(PSPSDK)/lib/build.mak
