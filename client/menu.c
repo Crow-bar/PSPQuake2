@@ -1203,7 +1203,7 @@ static menuslider_s		s_joy_dz_max_slider;
 static menuslider_s		s_joy_cv_power_slider;
 static menuslider_s		s_joy_cv_expo_slider;
 
-const char *joy_sensitivity_cvars[] =
+static char *joy_sensitivity_cvars[] =
 {
 	"",
 	"joy_forwardsensitivity",
