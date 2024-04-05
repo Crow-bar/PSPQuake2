@@ -1198,6 +1198,7 @@ static menulist_s		s_joy_axisy_list;
 static menuslider_s		s_joy_axisy_sensitivity_slider;
 static menulist_s		s_joy_axisy_inv_box;
 
+static menulist_s		s_joy_smooth_box;
 static menuslider_s		s_joy_dz_min_slider;
 static menuslider_s		s_joy_dz_max_slider;
 static menuslider_s		s_joy_cv_power_slider;
@@ -1283,6 +1284,11 @@ static void UpdateSensitivityYFunc( void *unused )
 		s_joy_axisx_sensitivity_slider.curvalue = s_joy_axisy_sensitivity_slider.curvalue;
 		s_joy_axisx_inv_box.curvalue = s_joy_axisy_inv_box.curvalue;
 	}
+}
+
+static void UpdateSmoothFunc( void *unused )
+{
+	Cvar_SetValue( "joy_smooth", s_joy_smooth_box.curvalue );
 }
 
 static void UpdateDzMinFunc( void *unused )
@@ -1399,6 +1405,16 @@ void Joy_MenuInit( void )
 
 	position_y += 20;
 
+	s_joy_smooth_box.generic.type					= MTYPE_SPINCONTROL;
+	s_joy_smooth_box.generic.x						= 0;
+	s_joy_smooth_box.generic.y						= position_y;
+	s_joy_smooth_box.generic.name					= "Smoothing filter";
+	s_joy_smooth_box.generic.callback				= UpdateSmoothFunc;
+	s_joy_smooth_box.itemnames						= yesno_names;
+	s_joy_smooth_box.curvalue						= Cvar_VariableValue( "joy_smooth" );
+
+	position_y += 20;
+
 	s_joy_dz_min_slider.generic.type				= MTYPE_SLIDER;
 	s_joy_dz_min_slider.generic.x					= 0;
 	s_joy_dz_min_slider.generic.y					= position_y;
@@ -1449,6 +1465,7 @@ void Joy_MenuInit( void )
 	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisy_sensitivity_slider );
 	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_axisy_inv_box );
 
+	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_smooth_box );
 	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_dz_min_slider );
 	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_dz_max_slider );
 	Menu_AddItem( &s_joy_menu, ( void * ) &s_joy_cv_power_slider );

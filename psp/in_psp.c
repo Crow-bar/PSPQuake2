@@ -46,6 +46,7 @@ cvar_t  *joy_dz_min;
 cvar_t  *joy_dz_max;
 cvar_t  *joy_cv_power;
 cvar_t  *joy_cv_expo;
+cvar_t  *joy_smooth;
 
 cvar_t  *joy_axisx;
 cvar_t  *joy_axisy;
@@ -189,6 +190,7 @@ void IN_Init (void)
 	joy_dz_max              = Cvar_Get("joy_dz_max",             "0",    CVAR_ARCHIVE);
 	joy_cv_power            = Cvar_Get("joy_cv_power",           "2",    CVAR_ARCHIVE);
 	joy_cv_expo             = Cvar_Get("joy_cv_expo",            "0.5",  CVAR_ARCHIVE);
+	joy_smooth              = Cvar_Get("joy_smooth",             "0",    CVAR_ARCHIVE);
 
 	joy_axisx               = Cvar_Get("joy_axisx",              "4",    CVAR_ARCHIVE);
 	joy_axisy               = Cvar_Get("joy_axisy",              "2",    CVAR_ARCHIVE);
@@ -304,11 +306,12 @@ IN_JoyUpdate
 */
 static void IN_JoyUpdate(usercmd_t *cmd)
 {
-	float       speed, aspeed;
-	float       axisValue[IN_JOY_MAX_AXES];
-	float       fAxisValue;
-	int         i;
-	SceCtrlData buf;
+	float           speed, aspeed;
+	float           axisValue[IN_JOY_MAX_AXES];
+	static float    lastAxisValue[IN_JOY_MAX_AXES] = {0};
+	float           fAxisValue;
+	int             i;
+	SceCtrlData     buf;
 
 	// verify joystick is available and that the user wants to use it
 	if (!in_joystick->value)
@@ -332,6 +335,15 @@ static void IN_JoyUpdate(usercmd_t *cmd)
 
 	axisValue[IN_JOY_AXIS_X] = joyCurveTable[buf.Lx];
 	axisValue[IN_JOY_AXIS_Y] = joyCurveTable[buf.Ly];
+
+	if (joy_smooth->value)
+	{
+		for (i = 0; i < IN_JOY_MAX_AXES; i++)
+		{
+			axisValue[i] = (axisValue[i] + lastAxisValue[i]) / 2.0f;
+			lastAxisValue[i] = axisValue[i];
+		}
+	}
 
 	if ((in_speed.state & 1) ^ (int)cl_run->value)
 		speed = 2;
