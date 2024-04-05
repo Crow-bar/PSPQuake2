@@ -630,7 +630,7 @@ void R_FloodFillSkin( byte *skin, int skinwidth, int skinheight )
 	byte				fillcolor = *skin; // assume this is the pixel to fill
 	floodfill_t			fifo[FLOODFILL_FIFO_SIZE];
 	int					inpt = 0, outpt = 0;
-	int					filledcolor = -1;
+	static int			filledcolor = -1;
 	int					i;
 
 	if (filledcolor == -1)
