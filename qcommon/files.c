@@ -605,7 +605,7 @@ qboolean FS_FCheckFlags (file_t *file, int flags)
 ==================
 FS_FLength
 
-Gets a file lenght
+Gets a file length
 ==================
 */
 off_t FS_FLength (file_t *file)
@@ -624,7 +624,7 @@ Reads data from a file into the array.
 */
 off_t FS_FRead (file_t *file, const void *buffer, size_t size)
 {
-	off_t	readlenght, readresult;
+	off_t	readlength, readresult;
 	off_t	completed, remaining;
 	byte	*buf;
 
@@ -639,34 +639,34 @@ off_t FS_FRead (file_t *file, const void *buffer, size_t size)
 	// check cache
 	if(file->buffer.position < file->buffer.length)
 	{
-		readlenght = file->buffer.length - file->buffer.position;
-		if(readlenght > remaining)
-			readlenght = remaining;
+		readlength = file->buffer.length - file->buffer.position;
+		if(readlength > remaining)
+			readlength = remaining;
 
-		memcpy(buf, &file->buffer.ptr[file->buffer.position], readlenght);
-		file->buffer.position += readlenght;
+		memcpy(buf, &file->buffer.ptr[file->buffer.position], readlength);
+		file->buffer.position += readlength;
 
-		completed += readlenght;
-		remaining -= readlenght;
+		completed += readlength;
+		remaining -= readlength;
 
 		if(remaining == 0)
 			return completed;
 	}
 
-	readlenght = file->length - file->position;
-	if(readlenght == 0)
+	readlength = file->length - file->position;
+	if(readlength == 0)
 		return completed;
 
 	// read to buffer
 	if(remaining > (FS_BUFFER_SIZE >> 1))
 	{
-		if(readlenght > remaining)
-			readlenght = remaining;
+		if(readlength > remaining)
+			readlength = remaining;
 
 #ifdef PSP_FIO
-		readresult = sceIoRead (file->handle, &buf[completed], readlenght);
+		readresult = sceIoRead (file->handle, &buf[completed], readlength);
 #else
-		readresult = (off_t)fread(&buf[completed], 1, readlenght, file->handle);
+		readresult = (off_t)fread(&buf[completed], 1, readlength, file->handle);
 #endif
 
 		completed += readresult;
@@ -678,26 +678,26 @@ off_t FS_FRead (file_t *file, const void *buffer, size_t size)
 	}
 	else
 	{
-		if(readlenght > FS_BUFFER_SIZE)
-			readlenght = FS_BUFFER_SIZE;
+		if(readlength > FS_BUFFER_SIZE)
+			readlength = FS_BUFFER_SIZE;
 
 #ifdef PSP_FIO
-		readresult = sceIoRead (file->handle, file->buffer.ptr, readlenght);
+		readresult = sceIoRead (file->handle, file->buffer.ptr, readlength);
 #else
-		readresult = (off_t)fread(file->buffer.ptr, 1, readlenght, file->handle);
+		readresult = (off_t)fread(file->buffer.ptr, 1, readlength, file->handle);
 #endif
 
 		if(readresult > 0)
 		{
-			readlenght = (remaining > readresult) ? readresult : remaining;
+			readlength = (remaining > readresult) ? readresult : remaining;
 
-			memcpy(&buf[completed], file->buffer.ptr, readlenght);
+			memcpy(&buf[completed], file->buffer.ptr, readlength);
 
-			completed += readlenght;
+			completed += readlength;
 			file->position += readresult;
 
 			// cache update
-			file->buffer.position = readlenght;
+			file->buffer.position = readlength;
 			file->buffer.length = readresult;
 		}
 
@@ -774,19 +774,19 @@ int FS_FPrintf (file_t *file, const char *format, ...)
 {
 	va_list		argptr;
 	static char	outbuff[MAX_PRINT_MSG];
-	int			lenght;
+	int			length;
 
 	if( !file )
 		return 0;
 
 	va_start (argptr, format);
-	lenght = vsnprintf(outbuff, sizeof(outbuff), format, argptr);
+	length = vsnprintf(outbuff, sizeof(outbuff), format, argptr);
 	va_end (argptr);
 
-	if(lenght >= sizeof(outbuff))
+	if(length >= sizeof(outbuff))
 		return -1;
 
-	return FS_FWrite (file, outbuff, lenght);
+	return FS_FWrite (file, outbuff, length);
 }
 
 /*
