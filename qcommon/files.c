@@ -64,6 +64,7 @@ struct file_s
 	off_t	length;
 	off_t	position;
 	off_t	offset;
+	int		ungetc;
 	struct
 	{
 		off_t	position;
@@ -427,6 +428,9 @@ file_t *FS_FOpen (const char *filename, int flags)
 	file = (file_t *)Z_Malloc(sizeof(file_t) + FS_BUFFER_SIZE + 64);
 	memset(file, 0, sizeof(file_t) + FS_BUFFER_SIZE + 64);
 
+	// ungetc invalidation
+	file->ungetc = FS_EOF;
+
 	// cache buffer
 	file->buffer.ptr = (byte *)(((uintptr_t)file + sizeof(file_t) + 63) & (~63));
 
@@ -636,6 +640,21 @@ off_t FS_FRead (file_t *file, const void *buffer, size_t size)
 	completed = 0;
 	remaining = (off_t)size;
 
+	// the pushed back character by ungetc function
+	if(file->ungetc != FS_EOF)
+	{
+		buf[completed] = (byte)file->ungetc;
+
+		completed++;
+		remaining--;
+
+		file->ungetc = FS_EOF;
+
+		if(remaining == 0)
+			return completed;
+
+	}
+
 	// check cache
 	if(file->buffer.position < file->buffer.length)
 	{
@@ -643,7 +662,7 @@ off_t FS_FRead (file_t *file, const void *buffer, size_t size)
 		if(readlength > remaining)
 			readlength = remaining;
 
-		memcpy(buf, &file->buffer.ptr[file->buffer.position], readlength);
+		memcpy(&buf[completed], &file->buffer.ptr[file->buffer.position], readlength);
 		file->buffer.position += readlength;
 
 		completed += readlength;
@@ -790,6 +809,72 @@ int FS_FPrintf (file_t *file, const char *format, ...)
 }
 
 /*
+====================
+FS_Getc
+
+Get the next character of a file
+====================
+*/
+int FS_Getc (file_t *file)
+{
+	char	c;
+
+	if (FS_FRead( file, &c, 1 ) != 1)
+		return FS_EOF;
+
+	return c;
+}
+
+/*
+====================
+FS_UnGetc
+
+Put a character back into the read buffer (only supports one character!)
+====================
+*/
+int FS_UnGetc (file_t *file, byte c)
+{
+	// If there's already a character waiting to be read
+	if (file->ungetc != FS_EOF)
+		return FS_EOF;
+
+	file->ungetc = c;
+	return c;
+}
+
+/*
+====================
+FS_Gets
+
+Same as fgets
+====================
+*/
+int FS_Gets (file_t *file, byte *buffer, size_t size)
+{
+	int	i, c;
+
+	for (i = 0; i < size - 1; i++)
+	{
+		c = FS_Getc (file);
+		if (c == '\r' || c == '\n' || c < 0)
+			break;
+		buffer[i] = c;
+	}
+	buffer[i] = 0;
+
+	// remove \n following \r
+	if (c == '\r')
+	{
+		c = FS_Getc (file);
+
+		if (c != '\n')
+			FS_UnGetc (file, (byte)c);
+	}
+
+	return c;
+}
+
+/*
 =================
 FS_FSeek
 
@@ -814,6 +899,9 @@ int FS_FSeek (file_t *file, off_t offset, int whence)
 
 	if(offset < 0 || offset > file->length)
 		return -1;
+
+	// ungetc invalidation
+	file->ungetc = FS_EOF;
 
 	// check cache
 	if(file->position - file->buffer.length <= offset && offset <= file->position)

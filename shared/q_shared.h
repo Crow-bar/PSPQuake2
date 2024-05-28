@@ -434,6 +434,9 @@ typedef struct file_s	file_t;
 #define FS_SEEK_CUR         1
 #define FS_SEEK_END         2
 
+// misc
+#define FS_EOF              -1
+
 /*
 ==========================================================
 

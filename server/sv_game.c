@@ -394,12 +394,18 @@ void SV_InitGameProgs (void)
 
 	import.monster_flash_offset = monster_flash_offset;
 
+	// v0.1 API END
+
+	import.FileGetc = FS_Getc;
+	import.FileUnGetc = FS_UnGetc;
+	import.FileGets = FS_Gets;
+
 	ge = (game_export_t *)Sys_GetGameAPI (&import);
 
 	if (!ge)
 		Com_Error (ERR_DROP, "failed to load game DLL");
-	if (ge->apiversion != GAME_API_VERSION)
-		Com_Error (ERR_DROP, "game is version %i, not %i", ge->apiversion,
+	if (ge->apiversion > GAME_API_VERSION)
+		Com_Error (ERR_DROP, "game is version %i, not <= %i", ge->apiversion,
 		GAME_API_VERSION);
 
 	ge->Init ();

@@ -20,7 +20,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 // game.h -- game dll information visible to server
 
-#define	GAME_API_VERSION	3
+#define	GAME_API_VERSION	30
 
 // edict->svflags
 
@@ -185,6 +185,12 @@ typedef struct
 	const char	*(*GetWriteDir) (int flags);
 
 	vec3_t		*monster_flash_offset;
+
+	// (API V3) END
+
+	int			(*FileGetc) (file_t *file);
+	int			(*FileUnGetc) (file_t *file, byte c);
+	int			(*FileGets) (file_t *file, byte *buffer, size_t size);
 } game_import_t;
 
 //
