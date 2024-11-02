@@ -463,6 +463,9 @@ CDAudio_Update
 */
 void CDAudio_Update (void)
 {
+	if (!(mp3.flags & MP3_FLAG_STATE_INIT))
+		return;
+
 	if (cd_nocd->modified)
 	{
 		if (cd_nocd->value)
