@@ -97,7 +97,7 @@ extern	viddef_t	vid;
 #define IMG_FLAG_HAS_ALPHA		0x00004000
 #define IMG_FLAG_DYNAMIC		0x00008000
 #define IMG_FLAG_EXTERNAL		0x00010000
-#define IMG_FLAG_PALLETED		0x00020000
+#define IMG_FLAG_PALETTED		0x00020000
 #define IMG_FLAG_MASK			0x0003f800
 
 #define IMG_IS_IND(image)		(!((image)->flags & IMG_FORMAT_MASK) || ((image)->flags & IMG_FORMAT_IND_24))

@@ -1138,7 +1138,7 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 	}
 
 	if (image->bpp == 1)
-		image->flags |= IMG_FLAG_PALLETED;
+		image->flags |= IMG_FLAG_PALETTED;
 
 	// allocate
 	image->data = (byte*)valloc (image->size);
@@ -1218,7 +1218,7 @@ void GL_UploadExternal (image_t *image, byte *pic, int width, int height)
 		ri.Sys_Error (ERR_DROP, "GL_UploadExternal: %s texture buffer is not aligned to 16-bytes!\n", image->name);
 
 	if (image->bpp == 1)
-		image->flags |= IMG_FLAG_PALLETED;
+		image->flags |= IMG_FLAG_PALETTED;
 
 	image->data = pic;
 	image->sl = 0;
@@ -1257,7 +1257,7 @@ qboolean GL_UploadScrap (image_t *image, byte *pic, int width, int height)
 	image->height = height;
 	image->uplwidth = BLOCK_WIDTH;
 	image->uplheight = BLOCK_HEIGHT;
-	image->flags |= IMG_FLAG_HAS_ALPHA | IMG_FLAG_SCRAP | IMG_FLAG_PALLETED;
+	image->flags |= IMG_FLAG_HAS_ALPHA | IMG_FLAG_SCRAP | IMG_FLAG_PALETTED;
 	image->size = 0;
 
 	image->sl = x;
