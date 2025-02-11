@@ -2,36 +2,21 @@
 
 Порт Quake 2 (Id Software, Inc.) для PlayStation Portable.
 
-> Основная цель добиться полной совместимости со всеми моделями PSP.
+Полная совместимость со всеми моделями PSP.
 
 ## Выполнено:
 
-* Поддержка загрузки входных параметров через файл (start.cmd)
-* Бокс с информацией об ошибке
-* Файловая система c прямым обращением к функциям sceIo
+* Загрузка входных параметров(argv) из файла start.cmd
 * Менеджер памяти из Quake 1
-* Карта коллизий загрузка с динамическим распределением памяти
-* Рендеринг, на выбор при сборке: аппаратный, программный
-* Звук, на выбор при сборке: audio, vaudio
-* Сетевая игра Infrastructure и Adhoc
-* MP3 проигрыватель
-* CTF игра
-
-
-## Не выполнено:
-
-* Спящий режим
-* MIP-текстурирование в аппаратном рендеринге
+* Рендеринг: аппаратный, программный
+* Звук: audio, vaudio
+* Сетевая игра: Infrastructure, Adhoc
+* Проигрывание MP3
 * Разделяемые игровые модули
 
+## Текущие задачи:
 
-## Проблемы:
-
-* Недостаточно памяти для работы всех карт одиночной игры на PSP-1000
-> Решаемо
-* Сбой при попытке открыть меню Multiplayer
-> Сбой происходит исключительно при отсутствии сохраненых точек доступа Wi-Fi
-
+* MIP-текстурирование в аппаратном рендеринге
 
 ## Сборка:
 
@@ -46,17 +31,17 @@
 
 ### Пример:
 
-#### make:
+#### Сборка:
 
 	make -j8 BUILD=release REF=gu USE_CDMP3=1
 
 > Для сборки с параметром `USE_VAUDIO=1`, требуется библиотека [libpspvaudio](https://github.com/Crow-bar/libpspvaudio)
 
-#### clean:
+#### Очистка:
 
 	make clean-all
 
-#### make & install:
+#### Сборка и очистка:
 
 	make install -j8 INSTALL_DIR=dist BUILD=release REF=gu USE_CDMP3=1
 
@@ -66,65 +51,47 @@
 1) Скопировать файл `EBOOT.PBP` в `ms0:/PSP/GAME/Quake2`
 2) Скопировать папку `baseq2` из оригинальной игры для PC в `ms0:/PSP/GAME/Quake2`
 3) Для работы mp3 проигрывателя необходимо скопировать треки в папку `ms0:/PSP/GAME/Quake2/baseq2/music`
-   треки должны иметь название `Track01.mp3, Track02.mp3 .. Track99.mp3`  от 1 до 99.
-
+   треки должны иметь название `Track01.mp3, Track02.mp3 .. Track99.mp3` от 1 до 99.
 
 
 #
 
+
 # **PSP Quake2(EN)**
 
-Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
+A port of Quake 2 (Id Software, Inc.) for PlayStation Portable.
 
-> The main goal is to achieve full compatibility with all PSP models.
+Fully compatible with all PSP models.
 
-## Done:
+## Completed:
 
-* Support for loading input parameters via file (start.cmd)
-* Box with error information
-* File system with direct access to sceIo functions
-* Memory manager from Quake 1
-* Сollision map loading with dynamic memory allocation
-* Rendering, to choose from when assembling: hardware, software
-* Sound, to choose from when assembling: audio, vaudio
-* Network game Infrastructure and Adhoc
-* MP3 player
-* CTF game
+* Loading input parameters(argv) from the start.cmd file
+* Memory Manager from Quake 1
+* Rendering: hardware, software
+* Sound: audio, vaudio
+* Network game: Infrastructure, Adhoc
+* MP3 playback
+* Shared game modules
 
+## Current tasks:
 
-## Not done:
-
-* Sleep mode
-* MIP-texturing in hardware rendering
-* Shareable game modules
-
-
-## Problems:
-
-* Not enough memory to run all single player maps on PSP-1000
-> Solvable
-* Crash when trying to open Multiplayer menu
-> Failure occurs only if there are no saved Wi-Fi hotspots
-
+* MIP texturing in hardware rendering
 
 ## Assembly:
 
-### Parameters (first default):
-
+### Parameters(the first default value):
 	BUILD(debug, release, prof) - Build mode
 	REF              (soft, gu) - Rendering: soft - software, gu - hardware
 	GAME            (base, ctf) - Game
 	USE_VAUDIO           (0, 1) - Audio output via vaudio
 	USE_CDMP3            (0, 1) - MP3 player
-	USE_STDIN            (0, 1) - Entering commands via tty mode PSPLink
+	USE_STDIN            (0, 1) - Entering commands via PSPLink tty mode
 
 ### Example:
 
 #### make:
-
 	make -j8 BUILD=release REF=gu USE_CDMP3=1
-
-> To build with `USE_VAUDIO=1`, the [libpspvaudio](https://github.com/Crow-bar/libpspvaudio) library is required
+> To build with the `USE_VAUDIO=1` parameter, the [libpspvaudio] library is required(https://github.com/Crow-bar/libpspvaudio )
 
 #### clean:
 
@@ -132,12 +99,13 @@ Port of Quake 2 (Id Software, Inc.) for the PlayStation Portable.
 
 #### make & install:
 
-	make install INSTALL_DIR=dist BUILD=release REF=gu USE_CDMP3=1
-
+	make install -j8 INSTALL_DIR=dist BUILD=release REF=gu USE_CDMP3=1
 
 ## Installation:
 
-1) Copy the file `EBOOT.PBP` to `ms0:/PSP/GAME/Quake2`
-2) Copy the `baseq2` folder from the original PC game to `ms0:/PSP/GAME/Quake2`
-3) For the mp3 player to work, you need to copy the tracks to the folder `ms0:/PSP/GAME/Quake2/baseq2/music`
-    tracks should be named `Track01.mp3, Track02.mp3 .. Track99.mp3` from 1 to 99.
+1) Copy the file "EBOOT.PBP" to the folder `ms0:/PSP/GAME/Quake2`
+2) Copy the "baseq2" folder from the original PC game to `ms0:/PSP/GAME/Quake2`.
+3) To play music, you need to copy the tracks to the following folder: `ms0:/PSP/GAME/Quake2/baseq2/music`.
+The files should be named Track01.mp3, Track02.mp3 ... Track99.mp3 (from 1 to 99).
+
+#
