@@ -584,10 +584,10 @@ int32_t Dbg_Init (void *dbuffer, int32_t format, uint8_t *fontpath, uint8_t usbu
 	if (usbuffer && sceDisplayIsForeground ())
 	{
 		// get current
-		sceDisplayGetMode (&mode, &dbg_context->disp.width, &dbg_context->disp.height);
+		sceDisplayGetMode ((int *)&mode, (int *)&dbg_context->disp.width, (int *)&dbg_context->disp.height);
 		sceDisplayGetFrameBuf (&dbg_context->disp.ptr,
-			&dbg_context->disp.stride,
-			&dbg_context->disp.format, 0);
+			(int *)&dbg_context->disp.stride,
+			(int *)&dbg_context->disp.format, 0);
 		dbg_context->disp.active = 1;
 	}
 	else

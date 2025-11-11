@@ -49,7 +49,7 @@ PSP_MODULE_INFO ("PSPQuake2", PSP_MODULE_USER, 0, 1);
 PSP_MAIN_THREAD_ATTR (THREAD_ATTR_USER | THREAD_ATTR_VFPU);
 //PSP_HEAP_SIZE_KB (-1 * 1024);
 PSP_HEAP_SIZE_KB (-1280);
-PSP_HEAP_THRESHOLD_SIZE_KB (1280); // new sdk ...
+PSP_HEAP_THRESHOLD_SIZE_KB (1280);
 
 cvar_t *nostdout;
 
@@ -58,6 +58,48 @@ unsigned sys_frame_time;
 qboolean stdin_active = true;
 
 void IN_KeyUpdate (void);
+
+// =======================================================================
+// Debug
+// =======================================================================
+
+#ifdef DEBUG
+#include <malloc.h>
+void Sys_MemStat_f (void)
+{
+	struct mallinfo mi;
+
+	mi = mallinfo();
+
+	Com_Printf ("Total non-mmapped bytes (arena):       %u\n", mi.arena);
+	Com_Printf ("# of free chunks (ordblks):            %u\n", mi.ordblks);
+	Com_Printf ("# of free fastbin blocks (smblks):     %u\n", mi.smblks);
+	Com_Printf ("# of mapped regions (hblks):           %u\n", mi.hblks);
+	Com_Printf ("Bytes in mapped regions (hblkhd):      %u\n", mi.hblkhd);
+	Com_Printf ("Max. total allocated space (usmblks):  %u\n", mi.usmblks);
+	Com_Printf ("Free bytes held in fastbins (fsmblks): %u\n", mi.fsmblks);
+	Com_Printf ("Total allocated space (uordblks):      %u\n", mi.uordblks);
+	Com_Printf ("Total free space (fordblks):           %u\n", mi.fordblks);
+	Com_Printf ("Topmost releasable block (keepcost):   %u\n", mi.keepcost);
+}
+#endif
+#ifdef USE_GPROF
+static char prof_filename[64] = "gmon.out";
+void Sys_ProfStart_f(void)
+{
+	if (Cmd_Argc() > 1)
+		strncpy (prof_filename, Cmd_Argv (1), sizeof(prof_filename) - 1);
+	else
+		strcpy (prof_filename, "gmon.out");
+
+	gprof_start ();
+}
+void Sys_ProfStop_f(void)
+{
+	gprof_stop(prof_filename, true);
+}
+#endif
+
 
 // =======================================================================
 // General routines
@@ -120,32 +162,11 @@ void Sys_Quit (void)
 	Dbg_Shutdown();
 
 #ifdef USE_GPROF
-	gprof_cleanup();
+	Sys_ProfStop_f();
 #endif
 
 	sceKernelExitGame();
 }
-
-#ifdef DEBUG
-#include <malloc.h>
-void Sys_MemStat (void)
-{
-	struct mallinfo mi;
-
-	mi = mallinfo();
-
-	Com_Printf ("Total non-mmapped bytes (arena):       %u\n", mi.arena);
-	Com_Printf ("# of free chunks (ordblks):            %u\n", mi.ordblks);
-	Com_Printf ("# of free fastbin blocks (smblks):     %u\n", mi.smblks);
-	Com_Printf ("# of mapped regions (hblks):           %u\n", mi.hblks);
-	Com_Printf ("Bytes in mapped regions (hblkhd):      %u\n", mi.hblkhd);
-	Com_Printf ("Max. total allocated space (usmblks):  %u\n", mi.usmblks);
-	Com_Printf ("Free bytes held in fastbins (fsmblks): %u\n", mi.fsmblks);
-	Com_Printf ("Total allocated space (uordblks):      %u\n", mi.uordblks);
-	Com_Printf ("Total free space (fordblks):           %u\n", mi.fordblks);
-	Com_Printf ("Topmost releasable block (keepcost):   %u\n", mi.keepcost);
-}
-#endif
 
 /*
 =================
@@ -155,7 +176,11 @@ Sys_Init
 void Sys_Init (void)
 {
 #ifdef DEBUG
-	Cmd_AddCommand ("memstat", Sys_MemStat);
+	Cmd_AddCommand ("memstat", Sys_MemStat_f);
+#endif
+#ifdef USE_GPROF
+	Cmd_AddCommand ("gpstart", Sys_ProfStart_f);
+	Cmd_AddCommand ("gpstop", Sys_ProfStop_f);
 #endif
 }
 

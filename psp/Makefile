@@ -61,12 +61,8 @@ HASH_CFLAGS = -DUSE_HASH_FOR_TEXTURES -DUSE_HASH_FOR_SFX -DUSE_HASH_FOR_FILES
 
 BASE_CFLAGS = -MD -mno-gpopt -Dstricmp=strcasecmp $(STLINK_CFLAGS) $(HASH_CFLAGS) -DEXT_VERSION=\"$(PSP_APP_VERSION)\"
 
-release_CFLAGS = $(BASE_CFLAGS) -O3 \
-	-fomit-frame-pointer -fexpensive-optimizations -falign-loops=2 \
-	-falign-jumps=2 -falign-functions=2
-
+release_CFLAGS = $(BASE_CFLAGS) -O3 -falign-loops=2 -falign-jumps=2 -falign-functions=2
 debug_CFLAGS= -g $(BASE_CFLAGS) -DUSE_STDIN -DDEBUG
-
 prof_CFLAGS= -g -pg -O0 $(BASE_CFLAGS) -DUSE_GPROF
 
 ifeq ($(USE_STDIN), 1)
@@ -148,7 +144,7 @@ install: all
 	@echo "Installing..."
 	@mkdir -p $(INSTALL_DIR)
 	@cp -fv $(EXTRA_TARGETS) $(INSTALL_DIR)
-	@cp -nv $(RESOURCE_DIR) $(INSTALL_DIR)
+	@cp -v --update=none $(RESOURCE_DIR) $(INSTALL_DIR)
 	@echo "Done."
 
 install-prx: install

@@ -543,7 +543,7 @@ qboolean NET_GetPacket (netsrc_t sock, netadr_t *net_from, sizebuf_t *net_messag
 	{
 		fromlen = sizeof(from);
 		ret = sceNetInetRecvfrom (ip_sockets[sock], net_message->data, net_message->maxsize, 0,
-			(struct sockaddr *)&from, &fromlen);
+			(struct sockaddr *)&from, (socklen_t *)&fromlen);
 		if (ret == -1)
 		{
 			err = sceNetInetGetErrno ();

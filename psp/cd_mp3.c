@@ -189,7 +189,7 @@ int CDAudio_FillBuffer (void)
 		return 0;
 
 	// get Info on the stream (where to fill to, how much to fill, where to fill from)
-	ret = sceMp3GetInfoToAddStreamData (mp3.handle, &dstptr, &dstsize, &dstpos);
+	ret = sceMp3GetInfoToAddStreamData (mp3.handle, &dstptr, (SceInt32 *)&dstsize, (SceInt32 *)&dstpos);
 	if (ret < 0)
 	{
 		//Com_DPrintf ("CDAudio_FillBuffer: sceMp3GetInfoToAddStreamData (0x%x)\n", ret);
