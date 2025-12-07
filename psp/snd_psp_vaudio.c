@@ -98,7 +98,7 @@ static int SNDDMA_MainThread (SceSize args, void *argp)
 		sceKernelSignalSema (snd.sema, 1);
 
 		sceVaudioOutputBlocking (PSP_VAUDIO_VOLUME_MAX, snd.buffer.ptr[snd.buffer.current]);
-		snd.buffer.current = !snd.buffer.current;
+		snd.buffer.current ^= 1;
 	}
 
 	sceKernelExitThread(0);

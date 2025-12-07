@@ -41,12 +41,14 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define SND_FLAG_INIT			0x00000008
 #define SND_FLAG_RUN			0x00000010
 
+typedef void (*SNDDMACopyFunc_t) (byte *dst, int dstpos, int scale, byte *src, int srcpos, int srcsamples);
 static struct
 {
 	volatile int	flags;
 	SceUID			thread;
 	SceUID			sema;
 	int				channel;
+	SNDDMACopyFunc_t copySamplesFunc;
 	struct
 	{
 		int		channels;
@@ -62,31 +64,83 @@ static struct
 
 /*
 ==================
-SNDDMA_CopySamples
+SNDDMA_Copy_8BitScaled
 ==================
 */
-static void SNDDMA_CopySamples (byte *dst, int dstpos, int scale, byte *src, int srcpos, int srcsamples, int srcwidth)
+static void SNDDMA_Copy_8BitScaled (byte *dst, int dstpos, int scale, byte *src, int srcpos, int srcsamples)
 {
-	int	i, j;
-
-	if (scale == 1 && srcwidth == 2)
-	{
-		memcpy (&((short *)dst)[dstpos], &((short *)src)[srcpos], srcsamples * 2);
-	}
-	else
-	{
-		for (i = 0; i < srcsamples; i++)
-		{
-			for(j = 0; j < scale; j++)
-			{
-				if (srcwidth == 1)
-					((short *)dst)[dstpos + (i * scale + j)] = (src[srcpos + i] - 128) << 8;
-				else
-					((short *)dst)[dstpos + (i * scale + j)] = ((short *)src)[srcpos + i];
-			}
-		}
-	}
+	__asm__ volatile (
+		".set		push\n"
+		".set		noreorder\n"
+		"move		$t0, $zero\n"			// $t0 = i
+		"sll		$t1, %1, 1\n"			// $t1 = (dstpos << 1)
+		"move		$t2, %4\n"				// $t2 = srcpos
+	"0:\n" // Outside loop (i)
+		"add		$t3, %3, $t2\n"			// $t3 = src + $t2
+		"lb			$t3, 0($t3)\n"			// $t3 = byte(t3)
+		"addi		$t3, $t3, -128 \n"		// $t3 -= 128
+		"sll		$t3, $t3, 8\n"			// $t3 = ($t3 << 8)
+		"move		$t4, $zero \n"			// $t4 = j
+	"1:\n" // Inside loop (j)
+		"add		$t5, %0, $t1\n"			// dst($t7) = dst + $t1
+		"sh			$t3, 0($t5)\n"			// *dst = halfword($t5)
+		"addi		$t4, $t4, 1 \n"			// $t4 += 1 (j++)
+		"blt		$t4, %2, 1b\n"			// if (j < scale) goto inside loop begin
+		"addi		$t1, $t1, 2\n"			// $t1 += 2 (delay slot)
+		"addi		$t0, $t0, 1\n"			// $t0 += 1 (i++)
+		"blt		$t0, %5, 0b\n"			// if (i < srcsamples) goto outside loop begin
+		"addi		$t2, $t2, 1\n"			// $t2 += 2 (srcpos + 1) (delay slot)
+		".set		pop\n"
+		::	"r"(dst), "r"(dstpos), "r"(scale),
+			"r"(src), "r"(srcpos), "r"(srcsamples)
+		:	"$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$memory"
+	);
 }
+
+/*
+==================
+SNDDMA_Copy_16BitScaled
+==================
+*/
+static void SNDDMA_Copy_16BitScaled (byte *dst, int dstpos, int scale, byte *src, int srcpos, int srcsamples)
+{
+	__asm__ volatile (
+		".set		push\n"
+		".set		noreorder\n"
+		"move		$t0, $zero\n"			// $t0 = i
+		"sll		$t1, %1, 1\n"			// $t1 = (dstpos << 1)
+		"sll		$t2, %4, 1\n"			// $t2 = (srcpos << 1)
+	"0:\n" // Outside loop (i)
+		"add		$t3, %3, $t2\n"			// $t3 = src + $t2
+		"lh			$t3, 0($t3)\n"			// $t3 = short(t3)
+		"move		$t4, $zero \n"			// $t4 = j
+	"1:\n" // Inside loop (j)
+		"add		$t5, %0, $t1\n"			// dst($t7) = dst + $t1
+		"sh			$t3, 0($t5)\n"			// *dst = short($t5)
+		"addi		$t4, $t4, 1 \n"			// $t4 += 1 (j++)
+		"blt		$t4, %2, 1b\n"			// if (j < scale) goto inside loop begin
+		"addi		$t1, $t1, 2\n"			// $t1 += 2 (delay slot)
+		"addi		$t0, $t0, 1\n"			// $t0 += 1 (i++)
+		"blt		$t0, %5, 0b\n"			// if (i < srcsamples) goto outside loop begin
+		"addi		$t2, $t2, 2\n"			// $t2 += 2 (srcpos + 2) (delay slot)
+		".set		pop\n"
+		::	"r"(dst), "r"(dstpos), "r"(scale),
+			"r"(src), "r"(srcpos), "r"(srcsamples)
+		:	"$t0", "$t1", "$t2", "$t3", "$t4", "$t5", "$memory"
+	);
+}
+
+/*
+==================
+SNDDMA_Copy_16BitDirect
+==================
+*/
+static void SNDDMA_Copy_16BitDirect (byte *dst, int dstpos, int scale, byte *src, int srcpos, int srcsamples)
+{
+	sceDmacMemcpy (&((short *)dst)[dstpos], &((short *)src)[srcpos], srcsamples << 1);
+}
+
+//=============================================================================
 
 /*
 ==================
@@ -109,21 +163,21 @@ static int SNDDMA_MainThread (SceSize args, void *argp)
 
 		if (wrapped < 0)
 		{
-			SNDDMA_CopySamples (snd.buffer.ptr[snd.buffer.current], 0, samplescale,
-								dma.buffer, dma.samplepos, samplesread, dma.width);
+			snd.copySamplesFunc (snd.buffer.ptr[snd.buffer.current], 0, samplescale,
+								dma.buffer, dma.samplepos, samplesread);
 			dma.samplepos += samplesread;
 		}
 		else
 		{
 			remaining = dma.samples - dma.samplepos;
 
-			SNDDMA_CopySamples (snd.buffer.ptr[snd.buffer.current], 0, samplescale,
-								dma.buffer, dma.samplepos, remaining, dma.width);
+			snd.copySamplesFunc (snd.buffer.ptr[snd.buffer.current], 0, samplescale,
+								dma.buffer, dma.samplepos, remaining);
 
 			if (wrapped > 0)
 			{
-				SNDDMA_CopySamples (snd.buffer.ptr[snd.buffer.current], remaining * samplescale, samplescale,
-									dma.buffer, 0, wrapped, dma.width);
+				snd.copySamplesFunc (snd.buffer.ptr[snd.buffer.current], remaining * samplescale, samplescale,
+									dma.buffer, 0, wrapped);
 			}
 			dma.samplepos = wrapped;
 		}
@@ -131,7 +185,7 @@ static int SNDDMA_MainThread (SceSize args, void *argp)
 		sceKernelSignalSema (snd.sema, 1);
 
 		sceAudioOutputBlocking(snd.channel, PSP_AUDIO_VOLUME_MAX, snd.buffer.ptr[snd.buffer.current]);
-		snd.buffer.current = !snd.buffer.current;
+		snd.buffer.current ^= 1;
 	}
 
 	sceKernelExitThread(0);
@@ -195,6 +249,11 @@ qboolean SNDDMA_Init(void)
 		SNDDMA_Shutdown ();
 		return false;
 	}
+
+	if (dma.width == 2)
+		snd.copySamplesFunc = (dma.speed == 44100) ? SNDDMA_Copy_16BitDirect : SNDDMA_Copy_16BitScaled;
+	else
+		snd.copySamplesFunc = SNDDMA_Copy_8BitScaled;
 
 	// clearing buffers
 	memset(dma.buffer, 0, dma.samples * dma.width);
