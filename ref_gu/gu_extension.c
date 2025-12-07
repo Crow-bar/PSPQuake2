@@ -36,58 +36,84 @@ extern GuDisplayList* gu_list;
 extern int gu_curr_context;
 extern int ge_list_executed[];
 
-static unsigned int gu_list_size;
+static size_t gu_list_size;
+
+#define GE_CMD_ALIGNMENT		4
+#define GE_CMD_ALIGNMENT_MASK	(GE_CMD_ALIGNMENT - 1)
 
 #define GE_SET_CMD(cmd)			(cmd << 24)
 #define GE_SET_ARG(arg)			(arg & 0x00ffffff)
 #define GE_SET_CMDWA(cmd, arg)	(GE_SET_CMD(cmd) | GE_SET_ARG(arg))
 
-void extGuStart (int cid, void* list, int size)
+void extGuStart (int cid, void* list, size_t size)
 {
 	gu_list_size = size;
 	sceGuStart (cid, list);
 }
 
-void *extGuBeginMemory (unsigned int *maxsize)
+void *extGuGetAlignedMemory (size_t align, size_t size)
 {
-	if (maxsize != NULL)
-		*maxsize = gu_list_size - ((unsigned int)gu_list->current - (unsigned int)gu_list->start) - 8;
+	unsigned int *current_ptr;
+	unsigned int *start_ptr;
+	unsigned int *dest_ptr;
 
-	return gu_list->current + 2; // 8 bytes reserved for jump cmd
+	current_ptr = gu_list->current;
+	start_ptr   = (unsigned int *)((((uintptr_t)current_ptr + 8 - 1) | (align - 1)) + 1);
+	dest_ptr    = (unsigned int *)((uintptr_t)start_ptr + ((size + GE_CMD_ALIGNMENT_MASK) & ~GE_CMD_ALIGNMENT_MASK));
+
+	// jump cmd
+	*(current_ptr++) = GE_SET_CMD(16) | ((((uintptr_t)dest_ptr) >> 8) & 0xf0000); // base 8
+	*(current_ptr++) = GE_SET_CMD(8)  | (((uintptr_t)dest_ptr) & 0xffffff); // jump 24
+
+	// set current addr
+	gu_list->current = dest_ptr;
+	if (!gu_curr_context)
+		sceGeListUpdateStallAddr (ge_list_executed[0], dest_ptr);
+
+	return start_ptr;
 }
 
-void extGuEndMemory (void *eaddr)
+void *extGuBeginMemory (size_t *maxsize)
 {
-	unsigned int	*jumpaddr;
-	unsigned int	size;
+	uintptr_t start_addr;
 
-	size = (unsigned int)eaddr - (unsigned int)gu_list->current;
+	// 8 bytes reserved for jump cmd
+	start_addr = ((uintptr_t)gu_list->current + 8);
 
+	if (maxsize != NULL)
+		*maxsize = gu_list_size - (start_addr - (uintptr_t)gu_list->start);
+
+	return (void *)start_addr; 
+}
+
+void extGuEndMemory (void *end_ptr)
+{
+	size_t       size;
+	unsigned int *current_ptr;
+	unsigned int *dest_ptr;
+
+	size = (uintptr_t)end_ptr - (uintptr_t)gu_list->current;
 	if (size > 8)
 	{
-		// align to 4-byte boundary
-		size = (size + 3) & ~3;
-
-		jumpaddr = (unsigned int*)((unsigned int)gu_list->current + size);
+		current_ptr = gu_list->current;
+		dest_ptr    = (unsigned int *)((uintptr_t)current_ptr + ((size + GE_CMD_ALIGNMENT_MASK) & ~GE_CMD_ALIGNMENT_MASK));
 
 		// jump cmd
-		gu_list->current[0] = GE_SET_CMD(16) | ((((unsigned int)jumpaddr) >> 8) & 0xf0000); // base 8
-		gu_list->current[1] = GE_SET_CMD(8)  | (((unsigned int)jumpaddr) & 0xffffff); // jump 24
+		*(current_ptr++) = GE_SET_CMD(16) | ((((uintptr_t)dest_ptr) >> 8) & 0xf0000); // base 8
+		*(current_ptr++) = GE_SET_CMD(8)  | (((uintptr_t)dest_ptr) & 0xffffff); // jump 24
 
 		// set current addr
-		gu_list->current = jumpaddr;
-
+		gu_list->current = dest_ptr;
 		if (!gu_curr_context)
-			sceGeListUpdateStallAddr (ge_list_executed[0], jumpaddr);
+			sceGeListUpdateStallAddr (ge_list_executed[0], dest_ptr);
 	}
 }
 
 /* Begin user packet */
-void *extGuBeginPacket (unsigned int *maxsize)
+void *extGuBeginPacket (size_t *maxsize)
 {
 	if (maxsize != NULL)
-		*maxsize = gu_list_size - ((unsigned int)gu_list->current - (unsigned int)gu_list->start);
-
+		*maxsize = gu_list_size - ((uintptr_t)gu_list->current - (uintptr_t)gu_list->start);
 	return gu_list->current;
 }
 

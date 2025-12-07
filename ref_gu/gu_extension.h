@@ -16,10 +16,11 @@ GNU General Public License for more details.
 #ifndef GU_EXTENSION_H
 #define GU_EXTENSION_H
 
-void extGuStart(int cid, void* list, int size);
-void *extGuBeginMemory (unsigned int *maxsize);
+void extGuStart (int cid, void* list, size_t size);
+void *extGuGetAlignedMemory (size_t align, size_t size);
+void *extGuBeginMemory (size_t *maxsize);
 void extGuEndMemory (void *eaddr);
-void *extGuBeginPacket (unsigned int *maxsize);
+void *extGuBeginPacket (size_t *maxsize);
 void extGuEndPacket (void *eaddr);
 
-#endif //GU_EXTENSION_H
+#endif // GU_EXTENSION_H
