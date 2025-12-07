@@ -55,39 +55,26 @@ static float dlighttab[17][2] = {
 { 0.382683,  0.923879},
 { 0.000000,  1.000000},
 };
-/*
-typedef struct
-{
-	vec3_t	origin;
-	vec3_t	color;
-	float	intensity;
-} dlight_t;
 
-vec3_t	vup;
-vec3_t	vpn;
-vec3_t	vright;
-
-*/
 void R_RenderDlight (dlight_t *light)
 {
 	int		i;
 	uint	vertcount;
 
-	gu_vert_fcv_t* const out = (gu_vert_fcv_t*)sceGuGetMemory(sizeof(gu_vert_fcv_t) * 18);
+	gu_vert_fcv_t* const out = (gu_vert_fcv_t*)extGuGetAlignedMemory(16, sizeof(gu_vert_fcv_t) * 18);
 
 	vertcount = 0;
 
-	__asm__ (
+	__asm__ volatile (
 		".set		push\n"					// save assembler option
 		".set		noreorder\n"			// suppress reordering
-		"mfc1		$8, %1\n"				// FPU->CPU
-		"mtv		$8, S013\n"				// CPU->VFPU S013 = light->intensity
-		"lv.s		S010,  0 + %2\n"		// S010 = light->color[0]
-		"lv.s		S011,  4 + %2\n"		// S011 = light->color[1]
-		"lv.s		S012,  8 + %2\n"		// S012 = light->color[2]
-		"lv.s		S100,  0 + %3\n"		// S100 = light->origin[0]
-		"lv.s		S110,  4 + %3\n"		// S110 = light->origin[1]
-		"lv.s		S120,  8 + %3\n"		// S120 = light->origin[2]
+		"lv.s		S013,  0(%1)\n"			// S013 = light->intensity
+		"lv.s		S010,  0(%2)\n"			// S010 = light->color[0]
+		"lv.s		S011,  4(%2)\n"			// S011 = light->color[1]
+		"lv.s		S012,  8(%2)\n"			// S012 = light->color[2]
+		"lv.s		S100,  0(%3)\n"			// S100 = light->origin[0]
+		"lv.s		S110,  4(%3)\n"			// S110 = light->origin[1]
+		"lv.s		S120,  8(%3)\n"			// S120 = light->origin[2]
 		"lv.s		S101,  0(%4)\n"			// S101 = vright[0]
 		"lv.s		S111,  4(%4)\n"			// S111 = vright[1]
 		"lv.s		S121,  8(%4)\n"			// S121 = vright[2]
@@ -107,21 +94,19 @@ void R_RenderDlight (dlight_t *light)
 		"vf2iz.q	C000, C000, 23\n"		// C000 = (int)C000 * 2^23
 		"vi2uc.q	S000, C000\n"			// S000 = ((S003>>23)<<24) | ((S002>>23)<<16) | ((S001>>23)<<8) | (S000>>23)
 		"vsub.t		C001, R100, R103\n"		// C001 = light->origin[i] - vpn[i]*rad;
-		"sv.s		S000,  0 + %0\n"		// out[vertcount].c = S000
-		"sv.s		S001,  4 + %0\n"		// out[vertcount].x = S001
-		"sv.s		S002,  8 + %0\n"		// out[vertcount].y = S002
-		"sv.s		S003, 12 + %0\n"		// out[vertcount].z = S003
+		"sv.q		C000, %0\n"				// out[vertcount] = C000
+		"li			$t0, 0xff000000\n"		// t0 = 0xff000000 (set alpha color)
+		"mtv		$t0, S000\n"			// S010 = $t0
 		".set		pop\n"					// restore assembler option
 		:	"=m"(out[vertcount++])
-		:	"f"(light->intensity), "m"(*light->color), "m"(*light->origin), "r"(vright), "r"(vup), "r"(vpn)
-		:	"$8"
+		:	"r"(&light->intensity), "r"(light->color), "r"(light->origin), "r"(vright), "r"(vup), "r"(vpn)
+		:	"$t0", "memory"
 	);
-	//vertcount++;
 
+	// The compiler will apply loop unrolling optimization here
 	for (i = 0; i < 17; i++)
 	{
-		out[vertcount].c = 0xff000000;
-		__asm__ (
+		__asm__ volatile (
 			".set		push\n"					// save assembler option
 			".set		noreorder\n"			// suppress reordering
 			"lv.s		S010,  0(%1)\n"			// S010 = dlighttab[i][0]
@@ -129,13 +114,11 @@ void R_RenderDlight (dlight_t *light)
 			"vhdp.t		S001, C010, C100[Z, Y, X]\n"	//S001 = light->origin[0] + vright[0] * dlighttab[i][1] * rad + vup[0] * dlighttab[i][0] * rad;
 			"vhdp.t		S002, C010, C110[Z, Y, X]\n"	//S002 = light->origin[1] + vright[1] * dlighttab[i][1] * rad + vup[1] * dlighttab[i][0] * rad;
 			"vhdp.t		S003, C010, C120[Z, Y, X]\n"	//S003 = light->origin[2] + vright[2] * dlighttab[i][1] * rad + vup[2] * dlighttab[i][0] * rad;
-			//"sv.s		S000,  0 + %0\n"		// out[vertcount].c = S000
-			"sv.s		S001,  4 + %0\n"		// out[vertcount].x = S001
-			"sv.s		S002,  8 + %0\n"		// out[vertcount].y = S002
-			"sv.s		S003, 12 + %0\n"		// out[vertcount].z = S003
+			"sv.q		C000, %0\n"
 			".set		pop\n"					// restore assembler option
 			:	"=m"(out[vertcount++])
 			:	"r"(dlighttab[i])
+			:	"memory"
 		);
 	}
 	sceGuDrawArray (GU_TRIANGLE_FAN, GU_COLOR_8888 | GU_VERTEX_32BITF, vertcount, 0, out);
@@ -195,37 +178,41 @@ void R_MarkLights (dlight_t *light, int bit, mnode_t *node)
 	msurface_t	*surf;
 	int			i;
 
-	if (node->contents != -1)
-		return;
-
-	splitplane = node->plane;
-	dist = DotProduct (light->origin, splitplane->normal) - splitplane->dist;
-
-	if (dist > light->intensity-DLIGHT_CUTOFF)
+	while(1)
 	{
-		R_MarkLights (light, bit, node->children[0]);
-		return;
-	}
-	if (dist < -light->intensity+DLIGHT_CUTOFF)
-	{
-		R_MarkLights (light, bit, node->children[1]);
-		return;
-	}
+		if (node->contents != -1)
+			return;
 
-// mark the polygons
-	surf = r_worldmodel->surfaces + node->firstsurface;
-	for (i=0 ; i<node->numsurfaces ; i++, surf++)
-	{
-		if (surf->dlightframe != r_dlightframecount)
+		splitplane = node->plane;
+		dist = DotProduct (light->origin, splitplane->normal) - splitplane->dist;
+
+		if (dist > light->intensity-DLIGHT_CUTOFF)
 		{
-			surf->dlightbits = 0;
-			surf->dlightframe = r_dlightframecount;
+			node = node->children[0];
+			continue;
 		}
-		surf->dlightbits |= bit;
-	}
+		if (dist < -light->intensity+DLIGHT_CUTOFF)
+		{
+			node = node->children[1];
+			continue;
+		}
 
-	R_MarkLights (light, bit, node->children[0]);
-	R_MarkLights (light, bit, node->children[1]);
+		// mark the polygons
+		surf = r_worldmodel->surfaces + node->firstsurface;
+		for (i=0 ; i<node->numsurfaces ; i++, surf++)
+		{
+			if (surf->dlightframe != r_dlightframecount)
+			{
+				surf->dlightbits = 0;
+				surf->dlightframe = r_dlightframecount;
+			}
+			surf->dlightbits |= bit;
+		}
+
+		R_MarkLights (light, bit, node->children[0]);
+		node = node->children[1];
+		continue;
+	}
 }
 
 
@@ -532,10 +519,10 @@ void R_BuildLightMap (msurface_t *surf, byte *dest, int stride)
 	int			i, j, size;
 	byte		*lightmap;
 	float		scale[4];
+	int			maps;
 	int			nummaps;
 	float		*bl;
-	lightstyle_t	*style;
-	int monolightmap;
+	int			monolightmap;
 
 	if ( surf->texinfo->flags & (SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP) )
 		ri.Sys_Error (ERR_DROP, "R_BuildLightMap called for non-lit surface");
@@ -546,99 +533,75 @@ void R_BuildLightMap (msurface_t *surf, byte *dest, int stride)
 	if (size > (sizeof(s_blocklights)>>4) )
 		ri.Sys_Error (ERR_DROP, "Bad s_blocklights size");
 
-// set to full bright if no light data
+	// set to full bright if no light data
 	if (!surf->samples)
 	{
-		int maps;
-
-		for (i=0 ; i<size*3 ; i++)
+		for (i = 0; i < size * 3; i++)
 			s_blocklights[i] = 255;
-		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-			 maps++)
-		{
-			style = &r_newrefdef.lightstyles[surf->styles[maps]];
-		}
 		goto store;
 	}
 
 	// count the # of maps
-	for ( nummaps = 0 ; nummaps < MAXLIGHTMAPS && surf->styles[nummaps] != 255 ;
-		 nummaps++)
-		;
+	for (nummaps = 0; nummaps < MAXLIGHTMAPS && surf->styles[nummaps] != 255; nummaps++);
 
 	lightmap = surf->samples;
 
 	// add all the lightmaps
 	if ( nummaps == 1 )
 	{
-		int maps;
+		bl = s_blocklights;
 
-		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-			 maps++)
+		for (i = 0 ; i < 3 ; i++)
+			scale[i] = gl_modulate->value*r_newrefdef.lightstyles[surf->styles[0]].rgb[i];
+
+		if ( scale[0] == 1.0F && scale[1] == 1.0F && scale[2] == 1.0F )
 		{
-			bl = s_blocklights;
-
-			for (i=0 ; i<3 ; i++)
-				scale[i] = gl_modulate->value*r_newrefdef.lightstyles[surf->styles[maps]].rgb[i];
-
-			if ( scale[0] == 1.0F &&
-				 scale[1] == 1.0F &&
-				 scale[2] == 1.0F )
+			for (i = 0; i < size; i++, bl += 3, lightmap += 3)
 			{
-				for (i=0 ; i<size ; i++, bl+=3)
-				{
-					bl[0] = lightmap[i*3+0];
-					bl[1] = lightmap[i*3+1];
-					bl[2] = lightmap[i*3+2];
-				}
+				bl[0] = lightmap[0];
+				bl[1] = lightmap[1];
+				bl[2] = lightmap[2];
 			}
-			else
+		}
+		else
+		{
+			for (i = 0; i < size; i++, bl += 3, lightmap += 3)
 			{
-				for (i=0 ; i<size ; i++, bl+=3)
-				{
-					bl[0] = lightmap[i*3+0] * scale[0];
-					bl[1] = lightmap[i*3+1] * scale[1];
-					bl[2] = lightmap[i*3+2] * scale[2];
-				}
+				bl[0] = lightmap[0] * scale[0];
+				bl[1] = lightmap[1] * scale[1];
+				bl[2] = lightmap[2] * scale[2];
 			}
-			lightmap += size*3;		// skip to next lightmap
 		}
 	}
 	else
 	{
-		int maps;
-
 		memset( s_blocklights, 0, sizeof( s_blocklights[0] ) * size * 3 );
 
-		for (maps = 0 ; maps < MAXLIGHTMAPS && surf->styles[maps] != 255 ;
-			 maps++)
+		for (maps = 0; maps < nummaps; maps++)
 		{
 			bl = s_blocklights;
 
 			for (i=0 ; i<3 ; i++)
 				scale[i] = gl_modulate->value*r_newrefdef.lightstyles[surf->styles[maps]].rgb[i];
 
-			if ( scale[0] == 1.0F &&
-				 scale[1] == 1.0F &&
-				 scale[2] == 1.0F )
+			if ( scale[0] == 1.0F && scale[1] == 1.0F && scale[2] == 1.0F )
 			{
-				for (i=0 ; i<size ; i++, bl+=3 )
+				for (i = 0; i < size; i++, bl += 3, lightmap += 3)
 				{
-					bl[0] += lightmap[i*3+0];
-					bl[1] += lightmap[i*3+1];
-					bl[2] += lightmap[i*3+2];
+					bl[0] += lightmap[0];
+					bl[1] += lightmap[1];
+					bl[2] += lightmap[2];
 				}
 			}
 			else
 			{
-				for (i=0 ; i<size ; i++, bl+=3)
+				for (i = 0; i < size; i++, bl += 3, lightmap += 3)
 				{
-					bl[0] += lightmap[i*3+0] * scale[0];
-					bl[1] += lightmap[i*3+1] * scale[1];
-					bl[2] += lightmap[i*3+2] * scale[2];
+					bl[0] += lightmap[0] * scale[0];
+					bl[1] += lightmap[1] * scale[1];
+					bl[2] += lightmap[2] * scale[2];
 				}
 			}
-			lightmap += size*3;		// skip to next lightmap
 		}
 	}
 
@@ -655,9 +618,9 @@ store:
 
 	if ( monolightmap == '0' )
 	{
-		for (i=0 ; i<tmax ; i++, dest += stride)
+		for (i = 0; i < tmax; i++, dest += stride)
 		{
-			for (j=0 ; j<smax ; j++)
+			for (j = 0; j < smax; j++)
 			{
 
 				r = Q_ftol( bl[0] );
@@ -665,22 +628,14 @@ store:
 				b = Q_ftol( bl[2] );
 
 				// catch negative lights
-				if (r < 0)
-					r = 0;
-				if (g < 0)
-					g = 0;
-				if (b < 0)
-					b = 0;
+				r = (r < 0) ? 0 : r;
+				g = (g < 0) ? 0 : g;
+				b = (b < 0) ? 0 : b;
 
 				/*
 				** determine the brightest of the three color components
 				*/
-				if (r > g)
-					max = r;
-				else
-					max = g;
-				if (b > max)
-					max = b;
+				max = Q_max3( r, g, b );
 
 				/*
 				** alpha is ONLY used for the mono lightmap case.  For this reason
@@ -715,9 +670,9 @@ store:
 	}
 	else
 	{
-		for (i=0 ; i<tmax ; i++, dest += stride)
+		for (i = 0; i < tmax; i++, dest += stride)
 		{
-			for (j=0 ; j<smax ; j++)
+			for (j = 0; j < smax; j++)
 			{
 
 				r = Q_ftol( bl[0] );
@@ -725,22 +680,14 @@ store:
 				b = Q_ftol( bl[2] );
 
 				// catch negative lights
-				if (r < 0)
-					r = 0;
-				if (g < 0)
-					g = 0;
-				if (b < 0)
-					b = 0;
+				r = (r < 0) ? 0 : r;
+				g = (g < 0) ? 0 : g;
+				b = (b < 0) ? 0 : b;
 
 				/*
 				** determine the brightest of the three color components
 				*/
-				if (r > g)
-					max = r;
-				else
-					max = g;
-				if (b > max)
-					max = b;
+				max = Q_max3( r, g, b );
 
 				/*
 				** alpha is ONLY used for the mono lightmap case.  For this reason
