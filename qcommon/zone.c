@@ -279,7 +279,11 @@ void *Z_TagMalloc (int size, int tag)
 //
 	size += sizeof(memblock_t);	// account for size of block header
 	size += 4;					// space for memory trash tester
+#ifdef __psp__
+	size = (size + 15) & ~15;	// align to 16-byte boundary
+#else
 	size = (size + 7) & ~7;		// align to 8-byte boundary
+#endif
 
 
 	base = rover = zone->rover;
