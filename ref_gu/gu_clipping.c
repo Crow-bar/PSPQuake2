@@ -32,6 +32,8 @@ Based on clipping system from PSP Quake by Peter Mackay and Chris Swindle.
 
 #include "gu_local.h"
 
+#define UNNORMALIZED_PLANES		1
+
 #define MAX_CLIPPED_VERTICES	32
 
 #define GU_REG_FR_SAVE		M600
@@ -57,11 +59,18 @@ static inline void GU_ClipGetAndStoreFrustum (const ScePspFMatrix4 *matrix)
 	__asm__ (
 		".set		push\n"					// save assembler option
 		".set		noreorder\n"			// suppress reordering
+		"lv.q		C100,  0(%0)\n"			// C100 = matrix->x
+		"lv.q		C110, 16(%0)\n"			// C110 = matrix->y
+		"lv.q		C120, 32(%0)\n"			// C120 = matrix->z
+		"lv.q		C130, 48(%0)\n"			// C130 = matrix->w
+#if UNNORMALIZED_PLANES
+		// Using unnormalized planes for better precision and to prevent clipping holes
+		"vadd.q		"M_ATOS(GU_REG_CP_BOTTOM)", R103, R101\n"	// C000 = R103 + R101                       ( BOTTOM )
+		"vadd.q		"M_ATOS(GU_REG_CP_LEFT)",   R103, R100\n"	// C010 = R103 + R100                       ( LEFT )
+		"vsub.q		"M_ATOS(GU_REG_CP_RIGHT)",  R103, R100\n"	// C020 = R103 - R100                       ( RIGHT )
+		"vsub.q		"M_ATOS(GU_REG_CP_TOP)",    R103, R101\n"	// C030 = R103 - R101                       ( TOP )
+#else
 		"vzero.q	C210\n"					// set zero vector
-		"lv.q		C100,  0(%0)\n"			// C000 = matrix->x
-		"lv.q		C110, 16(%0)\n"			// C010 = matrix->y
-		"lv.q		C120, 32(%0)\n"			// C020 = matrix->z
-		"lv.q		C130, 48(%0)\n"			// C030 = matrix->w
 		"vadd.q		C000, R103, R101\n"		// C000 = R103 + R101                       ( BOTTOM )
 		"vadd.q		C010, R103, R100\n"		// C010 = R103 + R100                       ( LEFT )
 		"vsub.q		C020, R103, R100\n"		// C020 = R103 - R100                       ( RIGHT )
@@ -77,6 +86,7 @@ static inline void GU_ClipGetAndStoreFrustum (const ScePspFMatrix4 *matrix)
 		"vscl.q		"M_ATOS(GU_REG_CP_LEFT)",   C010, S201\n"		// GU_REG_CP_LEFT   = C010 * S201
 		"vscl.q		"M_ATOS(GU_REG_CP_RIGHT)",  C020, S202\n"		// GU_REG_CP_RIGHT  = C020 * S202
 		"vscl.q		"M_ATOS(GU_REG_CP_TOP)",    C030, S203\n"		// GU_REG_CP_TOP    = C030 * S203
+#endif
 		".set		pop\n"					// Restore assembler option
 		::	"r"(matrix)
 	);
