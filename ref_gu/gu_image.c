@@ -766,24 +766,25 @@ static void GL_TextureSwizzle (byte *dst, const byte *src, int width, int height
 	int		j;
 	int		width_blocks = (width >> 4);
 	int		height_blocks = (height >> 3);
-	int		src_pitch = (width - 16) >> 2;
+	int		src_pitch = (width - 16);
 	int		src_row = width << 3;
-	const byte	*ysrc = src;
-	int		*dst32 = (int*)dst;
 
-	for ( blocky = 0; blocky < height_blocks; ++blocky )
+	const byte	*ysrc = src;
+	byte		*dst_ptr = dst;
+
+	for ( blocky = 0; blocky < height_blocks; blocky++ )
 	{
 		const byte* xsrc = ysrc;
-		for (blockx = 0; blockx < width_blocks; ++blockx)
+		for ( blockx = 0; blockx < width_blocks; blockx++ )
 		{
-			const int* src32 = (int*)xsrc;
-			for (j = 0; j < 8; ++j)
+			const byte* src_ptr = xsrc;
+			for ( j = 0; j < 8; j++ )
 			{
-				*(dst32++) = *(src32++);
-				*(dst32++) = *(src32++);
-				*(dst32++) = *(src32++);
-				*(dst32++) = *(src32++);
-				src32 += src_pitch;
+				// memcpy should be faster
+				memcpy(dst_ptr, src_ptr, 16);
+
+				dst_ptr += 16;
+				src_ptr += src_pitch + 16;
 			}
 			xsrc += 16;
 		}
@@ -1114,6 +1115,7 @@ Returns has_alpha
 void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 {
 	int			scaled_width, scaled_height;
+	int			width_bytes;
 	qboolean	swizzle;
 	byte		*tempbuff;
 	int			i;
@@ -1129,9 +1131,11 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 	if (!pic)
 		return;
 
+	width_bytes = image->uplwidth * image->bpp;
+
 	if (!(image->flags & IMG_FLAG_DYNAMIC))
 	{
-		swizzle = ((image->uplwidth * image->bpp) >= 16 && image->uplheight >= 8) ? true : false;
+		swizzle = ((width_bytes % 16 == 0) && (image->uplheight % 8 == 0));
 
 		if (GL_TextureHasAplha (pic, width, height, image->bpp))
 			image->flags |=	IMG_FLAG_HAS_ALPHA;
@@ -1174,7 +1178,7 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 	else
 	{
 		for(i = 0; i < height; i++)
-			memcpy (&tempbuff[i * image->uplwidth * image->bpp], &pic[i * width * image->bpp], width * image->bpp);
+			memcpy (&tempbuff[i * width_bytes], &pic[i * width * image->bpp], width * image->bpp);
 
 		image->sh = width;
 		image->th = height;
@@ -1182,7 +1186,7 @@ void GL_UploadTexture (image_t *image, byte *pic, int width, int height)
 
 	if (swizzle)
 	{
-		GL_TextureSwizzle (image->data, tempbuff, image->uplwidth * image->bpp, image->uplheight);
+		GL_TextureSwizzle (image->data, tempbuff, width_bytes, image->uplheight);
 		ri.Hunk_FreeToLowMark (mark);
 		image->flags |= IMG_FLAG_SWIZZLED;
 	}
