@@ -991,7 +991,10 @@ NET_InetShutdown
 void NET_InetShutdown (void)
 {
 	if (inet_handler_data.id)
+	{
 		sceNetApctlDelHandler (inet_handler_data.id);
+		inet_handler_data.id = 0;
+	}
 
 	sceNetApctlTerm();
 	sceNetResolverTerm();
@@ -1180,13 +1183,16 @@ NET_AdhocShutdown
 void NET_AdhocShutdown (void)
 {
 	if (adhoc_handler_data.id)
+	{
 		sceNetAdhocctlDelHandler (adhoc_handler_data.id);
+		adhoc_handler_data.id = 0;
+	}
 
 	sceNetAdhocctlTerm ();
 	sceNetAdhocTerm ();
 	sceNetTerm ();
 
-	sceUtilityUnloadNetModule (PSP_NET_MODULE_INET);
+	sceUtilityUnloadNetModule (PSP_NET_MODULE_ADHOC);
 	sceUtilityUnloadNetModule (PSP_NET_MODULE_COMMON);
 }
 
