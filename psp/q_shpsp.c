@@ -41,21 +41,53 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 Sys_Milliseconds
 ================
 */
+/*
+ * Note: It is not yet fully determined which method is faster on the PSP hardware. 
+ *       The first one uses the 32-bit Low timer with manual accumulation, while the 
+ *       second one relies on the 64-bit Wide timer.
+ *       Both implementations are safe from the 32-bit overflow bug (the 71-minute wrap-around)
+ */
 int curtime;
+#if 0
 int Sys_Milliseconds (void)
 {
-	static int timebase = 0;
+	static unsigned int last_micros = 0;
+	static unsigned long long accumulated_micros = 0;
 
-	if(!timebase)
+	unsigned int current_micros = sceKernelGetSystemTimeLow();
+
+	if (!last_micros)
 	{
-		timebase = sceKernelGetSystemTimeLow();
+		last_micros = current_micros;
 		return 0;
 	}
 
-	curtime = (sceKernelGetSystemTimeLow() - timebase) / 1000;
+	accumulated_micros += (current_micros - last_micros);
+	last_micros = current_micros;
+
+	curtime = accumulated_micros / 1000;
 
 	return curtime;
 }
+#else
+int Sys_Milliseconds (void)
+{
+	static SceInt64 timebase = 0;
+	SceInt64 now;
+
+	now = sceKernelGetSystemTimeWide();
+
+	if (timebase == 0)
+	{
+		timebase = now;
+		return 0;
+	}
+
+	curtime = (int)((now - timebase) / 1000);
+
+	return curtime;
+}
+#endif
 
 void Sys_Mkdir (char *path)
 {
